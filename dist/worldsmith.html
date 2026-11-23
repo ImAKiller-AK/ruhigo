@@ -652,6 +652,9 @@ function costAt(wx,wy){
 const RES=[["Grain",[214,190,96]],["Timber",[96,150,92]],["Fish",[98,166,206]],["Ore",[176,170,184]],["Salt",[238,234,222]],["Furs",[186,136,100]],["Spice",[220,116,94]]];
 const FCOL=[[208,92,74],[84,146,214],[160,116,214],[222,176,72],[72,180,160],[220,124,170]];
 const END_YEAR=300,KEY=10,WAR_AT=0.75;
+// balance of power: a faction holding a third of the land stops absorbing free land, and past a quarter its armies
+// thin out, and no faction can be pushed below KEEP of the most land it ever held. Grudges: a frontier that stays strained (tension above GRUDGE_AT) builds up grievances year after year.
+const CLAIM_CAP=1/3,KEEP=0.5,STRETCH_AT=0.25,GRUDGE_AT=0.45,GRUDGE_RATE=0.012,GRUDGE_MAX=0.3;
 let SIM=null,simGen=0;
 
 // one resource per land cell, from biome, altitude, rivers and coast (res: 0 none, 1..7 index into RES)
@@ -814,12 +817,12 @@ function* history(S,gen){
   order.sort((a,b)=>arr[a]-arr[b]);
   S.totProd=new Float32Array(8);for(const k of order)if(res[k])S.totProd[res[k]]+=yld[k]; // world supply and people at the end, the yardstick for demand
   S.totPop=1;for(let i=0;i<nC;i++)S.totPop+=cityPop(S,i,END_YEAR);
-  const own=new Int8Array(GN).fill(-1),cells=new Int32Array(nF),prod=[];for(let F=0;F<nF;F++)prod.push(new Float32Array(8));
+  const own=new Int8Array(GN).fill(-1),cells=new Int32Array(nF),peak=new Int32Array(nF),prod=[];for(let F=0;F<nF;F++)prod.push(new Float32Array(8));
   const chCell=[],chTo=[],yearStart=new Int32Array(Y+1),keys=[];
   const set=(k,o)=>{
     const p=own[k];if(p===o)return;
     if(p>=0){cells[p]--;if(res[k])prod[p][res[k]]-=yld[k];}
-    own[k]=o;cells[o]++;if(res[k])prod[o][res[k]]+=yld[k];
+    own[k]=o;cells[o]++;if(cells[o]>peak[o])peak[o]=cells[o];if(res[k])prod[o][res[k]]+=yld[k];
     chCell.push(k);chTo.push(o);
   };
   const ecoY=[],tens=[],fLen=[],fBar=[],fReach=[],first=new Float32Array(nP).fill(-1),since=new Float32Array(nP),cityFY=new Int8Array(Y*nC).fill(-1);
@@ -832,6 +835,19 @@ function* history(S,gen){
   const pacts=[],pactOf=new Int32Array(nF).fill(-1),pactOn=new Int32Array(nF).fill(-1),pactCool=new Float32Array(nF),won=[],lostTo=new Float32Array(nP).fill(-1e9);
   for(let F=0;F<nF;F++)won.push([]);
   const versus=(X,foe)=>pactOf[X]>=0&&pacts[pactOf[X]].target===foe; // X belongs to a pact aimed at foe
+  // an offensive pact backs every war against its target; a defensive one only answers the target's own attacks
+  const pactActs=(P,W,tgt)=>P.mode==="offensive"||W.att===tgt||W.joint;
+  const stretch=F=>{const s=cells[F]/S.landCells;return s<=STRETCH_AT?1:Math.max(0.35,1-3*(s-STRETCH_AT));};
+  const grudge=new Float32Array(nP),deferred=[];
+  // which faction takes a free cell: the one that reached it first, unless a rival already holds the ground beside it;
+  // a faction at the claim cap leaves it to a rival or to later (-1)
+  const claimer=k=>{
+    let o=owner0[k],mine=false,alt=-1;const ki=k%GW,kj=(k/GW)|0;
+    for(let d=0;d<8;d++){const ni=ki+DX8[d],nj=kj+DY8[d];if(ni<0||nj<0||ni>=GW||nj>=GH)continue;const q=own[nj*GW+ni];if(q===o)mine=true;else if(q>=0&&(alt<0||cells[q]<cells[alt]))alt=q;}
+    if(!mine&&alt>=0)o=alt;
+    if(cells[o]>=CLAIM_CAP*S.landCells)o=alt>=0&&cells[alt]<CLAIM_CAP*S.landCells?alt:-1;
+    return o;
+  };
   let oi=0;
   for(let y=0;y<=END_YEAR;y++){
     yearStart[y]=chCell.length;
@@ -839,16 +855,16 @@ function* history(S,gen){
     if(y>0){
       const e=ecoY[y-1];
       for(let p=0;p<nP;p++){
-        const wi=active[p];if(wi<0)continue;const W=wars[wi],list=segs[p],m=[];m[W.a]=might(S,e,W.a);m[W.b]=might(S,e,W.b);
+        const wi=active[p];if(wi<0)continue;const W=wars[wi],list=segs[p],m=[];m[W.a]=might(S,e,W.a)*stretch(W.a);m[W.b]=might(S,e,W.b)*stretch(W.b);
         for(const X of [W.a,W.b]){ // pact partners send men and grain to whoever is fighting the pact's target
-          const foe=X===W.a?W.b:W.a;if(!versus(X,foe))continue;
+          const foe=X===W.a?W.b:W.a;if(!versus(X,foe)||!pactActs(pacts[pactOf[X]],W,foe))continue;
           for(const N of pacts[pactOf[X]].members)if(N!==X)m[X]+=0.45*might(S,e,N);
         }
         for(let q=0;q<list.length;q+=3){
           const k=list[q],n=list[q+1],a=own[k],b=own[n];if(a===b||m[a]===undefined||m[b]===undefined)continue; // already moved this year
           const sa=m[a]/(1+capDist[a][n]/90),sb=m[b]/(1+capDist[b][k]/90); // strength fades with the length of the supply line
           const att=sa>=sb?a:b,target=sa>=sb?n:k,ratio=sa>=sb?sa/sb:sb/sa;
-          if(fort[target]===2)continue;
+          if(fort[target]===2||cells[own[target]]<=KEEP*peak[own[target]])continue; // capitals hold, and so does a faction's last core
           let pr=Math.min(0.55,0.045+0.5*(ratio-1))/(0.6+0.4*list[q+2]); // rough ground and rivers hold the line
           if(fort[target])pr*=0.15;
           if(((Math.imul((target*307+y)^hs,0x9E3779B1)>>>0)%10000)/10000<pr){
@@ -859,12 +875,11 @@ function* history(S,gen){
       }
     }
     // 2. peaceful claims: each cell joins at its year, with the faction that reached it first unless a rival now holds the ground beside it
+    //    cells held back by the claim cap are offered again every year
+    if(deferred.length){let w=0;for(const k of deferred){if(own[k]>=0)continue;const o=claimer(k);if(o>=0)set(k,o);else deferred[w++]=k;}deferred.length=w;}
     while(oi<order.length&&arr[order[oi]]<=y){
       const k=order[oi++];if(own[k]>=0)continue;
-      let o=owner0[k],mine=false,alt=-1;const ki=k%GW,kj=(k/GW)|0;
-      for(let d=0;d<8;d++){const ni=ki+DX8[d],nj=kj+DY8[d];if(ni<0||nj<0||ni>=GW||nj>=GH)continue;const q=own[nj*GW+ni];if(q===o){mine=true;break;}if(q>=0)alt=q;}
-      if(!mine&&alt>=0)o=alt;
-      set(k,o);
+      const o=claimer(k);if(o>=0)set(k,o);else deferred.push(k);
     }
     // 3. frontier scan: length, crossing cost, closest approach of the two capitals and centre of every shared border
     fl.fill(0);fb.fill(0);fr.fill(1e9);fx.fill(0);fy.fill(0);for(let p=0;p<nP;p++)if(segs[p].length)segs[p].length=0;
@@ -903,7 +918,7 @@ function* history(S,gen){
       }
       members=members.filter(N=>!members.some(M=>M!==N&&active[N<M?N*nF+M:M*nF+N]>=0)); // no pact between two sides of a war
       if(members.length<2)continue;
-      pacts.push({id:pacts.length,target:X,members,start:y,end:-1,dur:25+(Math.imul((X*131+y)^hs,0x9E3779B1)>>>0)%20,cells0:cells[X],why:aggressive?"wars":"strength",wars:[]});
+      pacts.push({id:pacts.length,target:X,members,mode:aggressive?"offensive":"defensive",start:y,end:-1,dur:25+(Math.imul((X*131+y)^hs,0x9E3779B1)>>>0)%20,cells0:cells[X],why:aggressive?"wars":"strength",wars:[]});
       for(const N of members)pactOf[N]=pacts.length-1;pactOn[X]=pacts.length-1;
     }
     // 5b. tension of every pair, then wars starting and ending
@@ -915,27 +930,31 @@ function* history(S,gen){
       }
       const link=routes.some(r=>{if(r.open>y)return false;const a=cityFY[y*nC+r.a],b=cityFY[y*nC+r.b];return (a===A&&b===B)||(a===B&&b===A);});
       let t=tensionCalc(S,e,A,B,y,len,len?fb[p]/len:1,fr[p],since[p],link);
-      const allied=pactOf[A]>=0&&pactOf[A]===pactOf[B],facing=versus(A,B)||versus(B,A);
+      const allied=pactOf[A]>=0&&pactOf[A]===pactOf[B],tgt=versus(A,B)?B:versus(B,A)?A:-1,TP=tgt>=0?pacts[pactOn[tgt]]:null;
       if(allied)t*=0.55;            // partners set their own quarrels aside
-      else if(facing)t=Math.min(1,t+0.15); // and close ranks against the target
-      // joint attack: once the target is at war with one member, the others open their own fronts
-      const tgt=versus(A,B)?B:versus(B,A)?A:-1;
-      const joint=tgt>=0&&pacts[pactOn[tgt]].members.some(N=>N!==A&&N!==B&&active[N<tgt?N*nF+tgt:tgt*nF+N]>=0);
+      else if(TP&&TP.mode==="offensive")t=Math.min(1,t+0.15); // and an offensive pact closes ranks against the target
+      // grievances pile up on a frontier that stays strained and fade on one that calms down
+      if(len&&active[p]<0){if(t>=GRUDGE_AT)grudge[p]=Math.min(GRUDGE_MAX,grudge[p]+(t-GRUDGE_AT)*GRUDGE_RATE);else grudge[p]*=0.9;t=Math.min(1,t+grudge[p]);}
+      // joint attack: once the target is at war with one member (and, for a defensive pact, it was the target that
+      // attacked), the others open their own fronts
+      const joint=!!TP&&TP.members.some(N=>{if(N===A||N===B)return false;const wi=active[N<tgt?N*nF+tgt:tgt*nF+N];return wi>=0&&pactActs(TP,wars[wi],tgt);});
       let wi=active[p];
       if(wi>=0){
         const W=wars[wi];
         W.px.push(len?fx[p]/len:W.px[W.px.length-1]);W.py.push(len?fy[p]/len:W.py[W.py.length-1]);
         if(y-W.start>=W.dur||!len||cells[A]<0.6*W.cells0[0]||cells[B]<0.6*W.cells0[1]){ // peace: time, exhaustion or no front left
-          W.end=y;active[p]=-1;wi=-1;truce[p]=y+25+(Math.imul(wi^p^hs,0x85EBCA6B)>>>0)%20;since[p]=y; // the new border has to heat up again
+          W.end=y;active[p]=-1;wi=-1;grudge[p]=0;truce[p]=y+25+(Math.imul(wi^p^hs,0x85EBCA6B)>>>0)%20;since[p]=y; // the new border has to heat up again
           const net=W.gain[0]-W.gain[1];
           if(net>=25){won[A].push([y,net]);lostTo[B*nF+A]=y;}else if(net<=-25){won[B].push([y,-net]);lostTo[A*nF+B]=y;}
           t=tensionCalc(S,e,A,B,y,len,len?fb[p]/len:1,fr[p],since[p],link);
         }else t=Math.max(t,0.92);
       }else if(len&&!allied&&(t>=WAR_AT||joint)&&y>=truce[p]&&y<END_YEAR-4){
         const n=wars.filter(w=>w.a===A&&w.b===B).length;
-        wars.push({id:wars.length,a:A,b:B,start:y,end:-1,dur:6+(Math.imul((p*977+y)^hs,0x9E3779B1)>>>0)%18,gain:[0,0],towns:[],nth:n,
-          px:[fx[p]/len],py:[fy[p]/len],cells0:[cells[A],cells[B]],km:len*40000/GW,bar:fb[p]/len,pact:tgt>=0?pactOn[tgt]:-1,joint});
-        if(tgt>=0)pacts[pactOn[tgt]].wars.push(wars.length-1);
+        // the attacker: a pact member opening a joint front, otherwise the stronger side
+        const att=joint?(tgt===A?B:A):mt[A]>=mt[B]?A:B,W={id:wars.length,a:A,b:B,att,start:y,end:-1,dur:6+(Math.imul((p*977+y)^hs,0x9E3779B1)>>>0)%18,gain:[0,0],towns:[],nth:n,
+          px:[fx[p]/len],py:[fy[p]/len],cells0:[cells[A],cells[B]],km:len*40000/GW,bar:fb[p]/len,pact:-1,joint};
+        if(TP&&pactActs(TP,W,tgt)){W.pact=pactOn[tgt];TP.wars.push(W.id);}
+        wars.push(W);
         active[p]=wars.length-1;t=Math.max(t,0.92);
       }
       tens[p][y]=t;lastT[p]=t;
@@ -1050,7 +1069,10 @@ function routeLore(ri){
 }
 function warLore(wi){
   const S=SIM,W=S.wars[wi],A=S.factions[W.a],Bf=S.factions[W.b],pick=loreRng(300+wi),win=W.gain[0]>=W.gain[1]?A:Bf,lose=win===A?Bf:A,net=Math.abs(W.gain[0]-W.gain[1]);
-  let s="The "+W.name+" broke out in year "+W.start+" along "+fmtInt(W.km)+" km of "+(W.bar<1.8?"open country":W.bar<3.2?"broken country":"mountain and river frontier")+", after "+pick(["a toll dispute turned into a raid","a border fort was burned","years of quarrels over grazing rights","envoys were sent home unheard"])+".";
+  const att=S.factions[W.att],P=W.pact>=0?S.pacts[W.pact]:null;
+  let s="The "+W.name+" broke out in year "+W.start+" along "+fmtInt(W.km)+" km of "+(W.bar<1.8?"open country":W.bar<3.2?"broken country":"mountain and river frontier")+", "
+    +(W.joint?"when the "+att.name+(P&&P.mode==="defensive"?" came to the defence of its allies.":" opened a second front for its allies.")
+     :"when the "+att.name+" crossed the border after "+pick(["a toll dispute turned into a raid","a border fort was burned","years of quarrels over grazing rights","envoys were sent home unheard"])+".");
   if(net<25)s+=" Neither side could move the other far, and the line settled close to where it began.";
   else s+=" The "+win.name+", "+pick(["better fed and closer to its depots","with more men under arms","fighting nearer its own roads"])+", pushed the "+lose.name+" back across "+landArea(net)+".";
   if(W.towns.length)s+=" "+W.towns.map(t=>W0.cities[t.city].name+" fell in year "+t.year).join("; ")+".";
@@ -1060,9 +1082,11 @@ function warLore(wi){
 function pactLore(pi){
   const S=SIM,P=S.pacts[pi],X=S.factions[P.target],pick=loreRng(400+pi),names=P.members.map(N=>"the "+S.factions[N].name);
   let s="In year "+P.start+" "+names.slice(0,-1).join(", ")+" and "+names[names.length-1]+" swore the "+P.name+" against the "+X.name+", which "+(P.why==="wars"?pick(["had won more land by the sword than any of them could afford to lose","kept coming back from its wars larger than it went in"]):pick(["had grown stronger than any two of them together","could by then outfit more men than all its neighbours"]))+".";
-  s+=" Each promised "+pick(["grain and spearmen","passage for the others' armies","to treat an attack on one as an attack on all"])+" if the others were attacked.";
+  s+=P.mode==="defensive"
+    ?" It was a pact of defence: each promised "+pick(["grain and spearmen","passage for the others' armies","to treat an attack on one as an attack on all"])+" if the "+X.name+" struck first, and nothing more."
+    :" Its members swore to march together: once one of them was at war with the "+X.name+", the others would open fronts of their own.";
   if(P.wars.length)s+=" Under it they fought "+(P.wars.length===1?"the "+S.wars[P.wars[0]].name:P.wars.length+" wars")+(P.wars.some(w=>S.wars[w].joint)?", opening more than one front at once.":".");
-  else s+=" It was never tested in war.";
+  else s+=P.mode==="defensive"?" The "+X.name+" never put it to the test.":" It was never tested in war.";
   s+=P.end<0?" It still stood in year "+END_YEAR+".":" It lapsed in year "+P.end+(S.ecoY[P.end].cells[P.target]<0.7*P.cells0?", its work done.":", when the members' interests drifted apart.");
   return s;
 }
@@ -1992,11 +2016,11 @@ function simFactions(){ // the two lists of the Simulation tab: factions and the
     const li=document.createElement("li"),bt=document.createElement("button");bt.type="button";
     if(it.W){
       const W=it.W,net=W.gain[0]-W.gain[1],win=S.factions[net>=0?W.a:W.b];
-      bt.innerHTML='<span class="mark cap" style="background:'+rgb(HOT)+'"></span><span>'+W.name+'<span class="meta">'+(Math.abs(net)<25?"Stalemate":W0.cities[win.cap].name+" gained "+landArea(Math.abs(net),true))+(W.joint?" · joint attack":"")+'</span></span><span class="pop">'+W.start+"–"+(W.end<0?"":W.end)+'</span>';
+      bt.innerHTML='<span class="mark cap" style="background:'+rgb(HOT)+'"></span><span>'+W.name+'<span class="meta">'+(Math.abs(net)<25?"Stalemate":W0.cities[win.cap].name+" gained "+landArea(Math.abs(net),true))+(W.joint?S.pacts[W.pact].mode==="defensive"?" · in defence of allies":" · joint attack":"")+'</span></span><span class="pop">'+W.start+"–"+(W.end<0?"":W.end)+'</span>';
       bt.addEventListener("click",()=>{simPause();setYear(Math.min(END_YEAR,W.start+1));const p=warPos(W,SIM.yi);flyTo(p[0],p[1],5);select({kind:"war",id:W.id});});
     }else{
       const P=it.P,X=S.factions[P.target];
-      bt.innerHTML='<span class="mark cap" style="background:'+rgb(ALLY)+'"></span><span>'+P.name+'<span class="meta">'+P.members.length+' factions against '+W0.cities[X.cap].name+'</span></span><span class="pop">'+P.start+"–"+(P.end<0?"":P.end)+'</span>';
+      bt.innerHTML='<span class="mark cap" style="background:'+rgb(ALLY)+'"></span><span>'+P.name+'<span class="meta">'+P.members.length+' factions against '+W0.cities[X.cap].name+(P.mode==="defensive"?" · defensive":"")+'</span></span><span class="pop">'+P.start+"–"+(P.end<0?"":P.end)+'</span>';
       bt.addEventListener("click",()=>{simPause();setYear(Math.min(END_YEAR,P.start+1));flyTo(X.cx,X.cy,3);select({kind:"pact",id:P.id});});
     }
     li.appendChild(bt);ch.appendChild(li);
@@ -2091,7 +2115,8 @@ function warHTML(wi,y,tab){
   const st=y<W.start?["Begins in year "+W.start,"muted"]:W.end<0||y<W.end?["At war","hostile"]:["Ended in year "+W.end,"calm"];
   let h='<div class="biome">'+tag(st[0],st[1])+'</div>';
   h+=row("Between",A.name)+row("and",Bf.name)+row("Fought","Year "+W.start+(W.end<0?" onward":" to "+W.end))+row("Frontier at the start",fmtInt(W.km)+" km");
-  if(W.pact>=0)h+=row(W.joint?"Joint attack":"Fought under",'<button type="button" class="lnk" data-pact="'+W.pact+'">'+S.pacts[W.pact].name+'</button>');
+  h+=row("Attacker",S.factions[W.att].name);
+  if(W.pact>=0)h+=row(W.joint?(S.pacts[W.pact].mode==="defensive"?"Called to arms by":"Joint attack"):"Fought under",'<button type="button" class="lnk" data-pact="'+W.pact+'">'+S.pacts[W.pact].name+'</button>');
   h+='<div class="cap">Land taken over the whole war · thousand km²</div>';
   const mx=Math.max(1,W.gain[0],W.gain[1]);
   [A,Bf].forEach((fa,q)=>{h+='<div class="bal"><span>'+W0.cities[fa.cap].name+'</span><div class="meter"><i style="left:0;width:'+Math.round(W.gain[q]/mx*100)+'%;background:'+rgb(fa.color)+'"></i></div><b>'+fmtInt(W.gain[q]*5.1)+'</b></div>';});
@@ -2106,7 +2131,7 @@ function pactHTML(pi,y,tab){
   if(tab===1)return '<p>'+pactLore(pi)+'</p>';
   const st=y<P.start?["Sworn in year "+P.start,"muted"]:P.end<0||y<P.end?["In force","ally"]:["Lapsed in year "+P.end,"muted"];
   let h='<div class="biome">'+tag(st[0],st[1])+'</div>';
-  h+=row("Against",X.name)+row("Because of",P.why==="wars"?"its victories in war":"its growing strength")+row("Held","Year "+P.start+(P.end<0?" onward":" to "+P.end));
+  h+=row("Against",X.name)+row("Because of",P.why==="wars"?"its victories in war":"its growing strength")+row("Kind",P.mode==="defensive"?"Defensive · acts only if "+W0.cities[X.cap].name+" attacks":"Offensive · members fight together")+row("Held","Year "+P.start+(P.end<0?" onward":" to "+P.end));
   h+='<div class="cap">Members</div>';
   for(const N of P.members){const fa=S.factions[N];h+='<div class="rel"><span><span class="sw" style="background:'+rgb(fa.color)+'"></span>'+fa.name+'</span><span class="quiet">'+Math.round(simEconomy(y).cells[N]/S.landCells*100)+'% of land</span></div>';}
   h+='<div class="rel"><span><span class="sw" style="background:'+rgb(X.color)+'"></span>'+X.name+'</span><span class="quiet">'+Math.round(simEconomy(y).cells[P.target]/S.landCells*100)+'% of land · target</span></div>';

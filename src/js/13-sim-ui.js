@@ -126,11 +126,11 @@ function simFactions(){ // the two lists of the Simulation tab: factions and the
     const li=document.createElement("li"),bt=document.createElement("button");bt.type="button";
     if(it.W){
       const W=it.W,net=W.gain[0]-W.gain[1],win=S.factions[net>=0?W.a:W.b];
-      bt.innerHTML='<span class="mark cap" style="background:'+rgb(HOT)+'"></span><span>'+W.name+'<span class="meta">'+(Math.abs(net)<25?"Stalemate":W0.cities[win.cap].name+" gained "+landArea(Math.abs(net),true))+(W.joint?" · joint attack":"")+'</span></span><span class="pop">'+W.start+"–"+(W.end<0?"":W.end)+'</span>';
+      bt.innerHTML='<span class="mark cap" style="background:'+rgb(HOT)+'"></span><span>'+W.name+'<span class="meta">'+(Math.abs(net)<25?"Stalemate":W0.cities[win.cap].name+" gained "+landArea(Math.abs(net),true))+(W.joint?S.pacts[W.pact].mode==="defensive"?" · in defence of allies":" · joint attack":"")+'</span></span><span class="pop">'+W.start+"–"+(W.end<0?"":W.end)+'</span>';
       bt.addEventListener("click",()=>{simPause();setYear(Math.min(END_YEAR,W.start+1));const p=warPos(W,SIM.yi);flyTo(p[0],p[1],5);select({kind:"war",id:W.id});});
     }else{
       const P=it.P,X=S.factions[P.target];
-      bt.innerHTML='<span class="mark cap" style="background:'+rgb(ALLY)+'"></span><span>'+P.name+'<span class="meta">'+P.members.length+' factions against '+W0.cities[X.cap].name+'</span></span><span class="pop">'+P.start+"–"+(P.end<0?"":P.end)+'</span>';
+      bt.innerHTML='<span class="mark cap" style="background:'+rgb(ALLY)+'"></span><span>'+P.name+'<span class="meta">'+P.members.length+' factions against '+W0.cities[X.cap].name+(P.mode==="defensive"?" · defensive":"")+'</span></span><span class="pop">'+P.start+"–"+(P.end<0?"":P.end)+'</span>';
       bt.addEventListener("click",()=>{simPause();setYear(Math.min(END_YEAR,P.start+1));flyTo(X.cx,X.cy,3);select({kind:"pact",id:P.id});});
     }
     li.appendChild(bt);ch.appendChild(li);
@@ -225,7 +225,8 @@ function warHTML(wi,y,tab){
   const st=y<W.start?["Begins in year "+W.start,"muted"]:W.end<0||y<W.end?["At war","hostile"]:["Ended in year "+W.end,"calm"];
   let h='<div class="biome">'+tag(st[0],st[1])+'</div>';
   h+=row("Between",A.name)+row("and",Bf.name)+row("Fought","Year "+W.start+(W.end<0?" onward":" to "+W.end))+row("Frontier at the start",fmtInt(W.km)+" km");
-  if(W.pact>=0)h+=row(W.joint?"Joint attack":"Fought under",'<button type="button" class="lnk" data-pact="'+W.pact+'">'+S.pacts[W.pact].name+'</button>');
+  h+=row("Attacker",S.factions[W.att].name);
+  if(W.pact>=0)h+=row(W.joint?(S.pacts[W.pact].mode==="defensive"?"Called to arms by":"Joint attack"):"Fought under",'<button type="button" class="lnk" data-pact="'+W.pact+'">'+S.pacts[W.pact].name+'</button>');
   h+='<div class="cap">Land taken over the whole war · thousand km²</div>';
   const mx=Math.max(1,W.gain[0],W.gain[1]);
   [A,Bf].forEach((fa,q)=>{h+='<div class="bal"><span>'+W0.cities[fa.cap].name+'</span><div class="meter"><i style="left:0;width:'+Math.round(W.gain[q]/mx*100)+'%;background:'+rgb(fa.color)+'"></i></div><b>'+fmtInt(W.gain[q]*5.1)+'</b></div>';});
@@ -240,7 +241,7 @@ function pactHTML(pi,y,tab){
   if(tab===1)return '<p>'+pactLore(pi)+'</p>';
   const st=y<P.start?["Sworn in year "+P.start,"muted"]:P.end<0||y<P.end?["In force","ally"]:["Lapsed in year "+P.end,"muted"];
   let h='<div class="biome">'+tag(st[0],st[1])+'</div>';
-  h+=row("Against",X.name)+row("Because of",P.why==="wars"?"its victories in war":"its growing strength")+row("Held","Year "+P.start+(P.end<0?" onward":" to "+P.end));
+  h+=row("Against",X.name)+row("Because of",P.why==="wars"?"its victories in war":"its growing strength")+row("Kind",P.mode==="defensive"?"Defensive · acts only if "+W0.cities[X.cap].name+" attacks":"Offensive · members fight together")+row("Held","Year "+P.start+(P.end<0?" onward":" to "+P.end));
   h+='<div class="cap">Members</div>';
   for(const N of P.members){const fa=S.factions[N];h+='<div class="rel"><span><span class="sw" style="background:'+rgb(fa.color)+'"></span>'+fa.name+'</span><span class="quiet">'+Math.round(simEconomy(y).cells[N]/S.landCells*100)+'% of land</span></div>';}
   h+='<div class="rel"><span><span class="sw" style="background:'+rgb(X.color)+'"></span>'+X.name+'</span><span class="quiet">'+Math.round(simEconomy(y).cells[P.target]/S.landCells*100)+'% of land · target</span></div>';

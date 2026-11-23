@@ -21,7 +21,7 @@ Abre `dist/preview.html` en el navegador. No necesita instalar nada.
 | Comando | Qué hace |
 |---|---|
 | `npm run build` | Une los archivos de `src/` en `dist/worldsmith.html` y `dist/preview.html` |
-| `npm test` | Prueba el motor: historia de 300 años, rutas y exportación a Minecraft (unos 20 s) |
+| `npm test` | Prueba el motor: historia de 300 años, equilibrio de poder en 16 mundos, rutas y exportación a Minecraft (unos 35 s) |
 | `npm run check` | Avisa si `dist/` no está al día con `src/` |
 
 Con Python 3 instalado, la prueba de Minecraft además relee el mundo exportado con un lector independiente.

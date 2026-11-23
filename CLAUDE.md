@@ -11,7 +11,7 @@ unless asked.
 
 ```bash
 npm run build   # src/ -> dist/worldsmith.html (to publish) and dist/preview.html (to open locally)
-npm test        # engine tests in Node: history replay, routes, Minecraft export (~20 s)
+npm test        # engine tests in Node: history replay, balance on 16 worlds, routes, Minecraft export (~35 s)
 npm run check   # fails if dist/worldsmith.html is out of date with src/
 ```
 
@@ -59,25 +59,33 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
     replay. Scrubbing and playback never simulate anything; they only read these tables.
   - per-year tables: `ecoY` (land, production, population per faction), `tens` (tension per pair),
     `fLen`/`fBar`/`fReach` (shared frontier), `cityFY` (town owner).
-  - events: `wars` (`a`, `b`, `start`, `end`, `gain`, `towns`, `pact`, `joint`) and `pacts` (`target`,
-    `members`, `start`, `end`, `why`, `wars`).
+  - events: `wars` (`a`, `b`, `att` attacker, `start`, `end`, `gain`, `towns`, `pact`, `joint`) and `pacts`
+    (`target`, `members`, `mode` offensive/defensive, `start`, `end`, `why`, `wars`).
 - Long jobs are generators pumped by `sched` in ~10 ms slices so the page never freezes; anything new and
   heavy must follow the same pattern (`yield` often, check `gen !== simGen` to stop when the world changes).
 
 ## Decisions the owner has made
 
 - Keep the balance of power: wars move frontiers but do not wipe factions out or let one empire dominate.
-  Capitals cannot fall. The tests fail if a faction vanishes or ends above 40% of the land.
-- Conflict escalation: tension ≥ 0.75 (`WAR_AT`) on a shared frontier starts a war; pacts form against a
-  faction that is much stronger than its neighbours or keeps winning wars.
+  Capitals cannot fall. The tests fail if a faction vanishes or ends above 40% of the land (checked on 16 worlds).
+  Mechanisms: a faction holding a third of the land stops absorbing free land (`CLAIM_CAP`; held-back cells are
+  offered again each year), its armies thin out past a quarter (`STRETCH_AT`), and war cannot push a faction
+  below half of the most land it ever held (`KEEP`).
+- Conflict escalation: tension ≥ 0.75 (`WAR_AT`) on a shared frontier starts a war; the stronger side is the
+  attacker. A frontier that stays strained (tension ≥ `GRUDGE_AT`) piles up grievances that add to tension
+  until a war or calmer years clear them, so long-strained borders eventually fight; truly calm worlds can
+  still stay at peace (about 1 in 5).
+- Pacts are mixed by motive (chosen by the owner): against a faction that keeps winning wars the pact is
+  **offensive** (members back every war against the target, open joint fronts, +0.15 tension); against one that
+  is merely much stronger it is **defensive** (members only help, and only join in, when the target attacked
+  first). Defensive pacts mostly deter: few end up fighting.
 - Interface principle is zero clutter: dark survey-instrument style, technical type, subtle borders, no
   pop-ups; detail appears with zoom or selection.
 
 ## Open points
 
-- Tension and war weights were tuned on a handful of seeds; some worlds have no wars, the default seed
-  (`ember-4`) has 10 wars and 6 pacts. A proposed option, not yet chosen: purely defensive pacts that only act
-  when their target attacks first.
+- Tension, grudge and war weights are tuned on 48 seeds: about 6 wars per world on average, about 1 world in 5
+  without war, no faction above 36%. The default seed (`ember-4`) has 11 wars and 5 pacts.
 - The Minecraft export has been checked with `tools/verify_mcworld.py` but never opened inside Minecraft.
 - The page has been tested in desktop and phone-sized Chrome, not on a real phone.
 
