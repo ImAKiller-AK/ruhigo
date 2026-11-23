@@ -1,0 +1,143 @@
+<title>Worldsmith</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* @inline styles.css */
+</style>
+
+<div class="app">
+  <div class="map" id="mapWrap" tabindex="0" aria-label="World map. Scroll or pinch to zoom, drag to pan, arrow keys to move.">
+    <canvas id="map"></canvas>
+    <div class="chip hint" id="hint">Scroll to zoom · drag to pan · <span id="zoomTxt">×1.0</span></div>
+    <div class="zoomctl">
+      <button type="button" id="zin" aria-label="Zoom in">+</button>
+      <button type="button" id="zout" aria-label="Zoom out">−</button>
+      <button type="button" id="zreset" aria-label="Show whole world" style="font-size:13px">⤢</button>
+    </div>
+    <div class="chip scalebar"><span id="scaleTxt">1000 km</span><i id="scaleBar" style="width:100px"></i></div>
+    <div class="chip status" id="status">Generating…</div>
+    <div class="timebar" id="timebar" hidden>
+      <button type="button" id="tPlay" aria-label="Play"></button>
+      <button type="button" id="tSpeed" aria-label="Playback speed">1×</button>
+      <input type="range" id="tYear" min="0" max="300" step="1" value="300" aria-label="Year of the simulation">
+      <output id="tLabel" for="tYear">Year 300</output>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <nav class="tabs" role="tablist" aria-label="Workspace">
+      <button type="button" role="tab" data-tab="gen" aria-selected="true">Generation</button>
+      <button type="button" role="tab" data-tab="sim" aria-selected="false">Simulation</button>
+    </nav>
+
+    <header>
+      <div class="eyebrow">Survey of an imagined world</div>
+      <h1 id="worldName">—</h1>
+      <div class="sub" id="worldSub">Seed <b id="seedTxt"></b></div>
+    </header>
+
+    <section data-pane="gen">
+      <form id="seedForm" class="row" autocomplete="off">
+        <label for="seed" class="label" hidden>Seed</label>
+        <input type="text" id="seed" maxlength="32" spellcheck="false" aria-label="World seed">
+        <button type="submit" class="primary">Generate</button>
+      </form>
+      <button type="button" id="randomBtn">New random world</button>
+    </section>
+
+    <section>
+      <div class="label">Map layers</div>
+      <div class="seg" id="layerSeg" role="group" aria-label="Base layer">
+        <button type="button" data-mode="biome" aria-pressed="true">Biomes</button>
+        <button type="button" data-mode="relief" aria-pressed="false">Relief</button>
+        <button type="button" data-mode="temp" aria-pressed="false">Heat</button>
+        <button type="button" data-mode="rain" aria-pressed="false">Rain</button>
+        <button type="button" data-mode="cost" data-pane="sim" aria-pressed="false" hidden>Cost</button>
+      </div>
+      <div class="chips" role="group" aria-label="Overlays">
+        <label><input type="checkbox" id="optRivers" checked>Rivers</label>
+        <label><input type="checkbox" id="optCities" checked>Settlements</label>
+        <label><input type="checkbox" id="optGrid" checked>Lat / long</label>
+        <label data-pane="sim" hidden><input type="checkbox" id="optBorders" checked>Borders</label>
+        <label data-pane="sim" hidden><input type="checkbox" id="optRoutes" checked>Trade routes</label>
+        <label data-pane="sim" hidden><input type="checkbox" id="optRes">Resources</label>
+      </div>
+    </section>
+
+    <section>
+      <div class="label" id="readLabel">Terrain readout</div>
+      <div class="subtabs" id="selTabs" role="tablist" aria-label="Selection details" hidden></div>
+      <dl class="readout" id="readout"></dl>
+    </section>
+
+    <section data-pane="gen">
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section data-pane="sim" hidden>
+      <div class="label">World history</div>
+      <div class="stats" id="simStats"></div>
+      <p class="note" id="simMsg" role="status" hidden></p>
+      <p class="note">Press play on the map to watch 300 years unfold. Tap a town, a road, a territory or a conflict to inspect it.</p>
+    </section>
+
+    <section data-pane="sim" hidden>
+      <div class="label">Factions · tap to inspect</div>
+      <ul class="cities" id="factions"></ul>
+    </section>
+
+    <section data-pane="sim" hidden>
+      <div class="label">Chronicle · tap to jump</div>
+      <ul class="cities" id="chronicle"></ul>
+    </section>
+
+    <section data-pane="gen">
+      <div class="label">Shape the world</div>
+      <div class="slider"><label for="sSea">Sea level</label><output id="oSea" for="sSea"></output><input type="range" id="sSea" min="-0.25" max="0.3" step="0.01" value="0.04"></div>
+      <div class="slider"><label for="sScale">Landmass size</label><output id="oScale" for="sScale"></output><input type="range" id="sScale" min="0.8" max="3.4" step="0.05" value="2.3"></div>
+      <div class="slider"><label for="sRough">Ruggedness</label><output id="oRough" for="sRough"></output><input type="range" id="sRough" min="0.38" max="0.64" step="0.01" value="0.5"></div>
+      <div class="slider"><label for="sTemp">Climate shift</label><output id="oTemp" for="sTemp"></output><input type="range" id="sTemp" min="-15" max="15" step="1" value="0"></div>
+    </section>
+
+    <section data-pane="gen">
+      <div class="label">Export to Minecraft · Bedrock</div>
+      <div class="fields">
+        <label class="field" for="mcArea">Area
+          <select id="mcArea"><option value="world">Whole world</option><option value="view">Framed area</option></select>
+        </label>
+        <label class="field" for="mcSize">Size in blocks
+          <select id="mcSize"></select>
+        </label>
+      </div>
+      <div class="sub" id="mcInfo"></div>
+      <div class="row">
+        <button type="button" id="mcBtn" style="flex:1">Build Minecraft world</button>
+        <button type="button" id="mcSave" hidden>Save file again</button>
+      </div>
+      <div class="bar" id="mcBar" hidden><i></i></div>
+      <p class="note" id="mcMsg" role="status">Builds this terrain with its biomes, rivers, trees and settlements as a Bedrock world. Save the .zip, rename it to .mcworld and open it with Minecraft.</p>
+    </section>
+
+    <section>
+      <div class="label">Settlements · tap to fly there</div>
+      <ul class="cities" id="cities"></ul>
+    </section>
+
+    <section>
+      <div class="label" id="legendLabel">Legend</div>
+      <div id="legend"></div>
+      <div id="legendRes" hidden></div>
+    </section>
+
+    <p class="foot">Every pixel is computed from layered simplex noise with domain warping. Zoom in and new detail keeps appearing. Rivers follow a priority-flood drainage model; climate comes from latitude, altitude and rain belts. In the simulation, trade routes are least-cost A* paths over terrain friction, and factions spread along the same cost field from the largest towns, then fight over any frontier that turns hostile.</p>
+  </aside>
+</div>
+
+<script>
+(()=>{
+"use strict";
+/* @inline js */
+})();
+</script>
