@@ -67,7 +67,7 @@ const THEMES={ // base temperature °C, rainfall range mm/yr: the biome function
 };
 const LAYOUTS={island:"Island",coast:"Coastal",inland:"Inland"};
 const arenaSea=()=>0.04+(P.sea-0.04)*0.35;               // the sea slider moves the shore less on a small map
-const arenaTop=()=>70+330*(P.rough-0.38)/0.26;            // highest hills, from the ruggedness slider (70–400 m, about 220 by default)
+const arenaTop=()=>(70+330*(P.rough-0.38)/0.26)*(P.theme==="desert"?1.5:1);            // highest hills, from the ruggedness slider (70–400 m, about 220 by default)
 function elevArena(x,y,oct){
   const S=noiseScale(),g=P.rough;
   const wx=fbm(N.w1,x*S*0.6,y*S*0.6,3,0.5),wy=fbm(N.w2,x*S*0.6+7.1,y*S*0.6+3.7,3,0.5);

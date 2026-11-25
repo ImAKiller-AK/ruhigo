@@ -86,7 +86,7 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
 
 - Battle maps (asked for by the owner, modelled on 8×8 km battle-royale maps): original names and layouts,
   sizes 4/6/8 km, about 2.6 named places per km of width, relief organised in regions (one or two blocks
-  of low, rounded, browner hills (about 220 m at most by default); broad, gently rolling lowland with a few irregular lakes; ragged coasts),
+  of low, rounded, browner hills (about 220 m at most by default, 330 m in the desert); broad, gently rolling lowland with a few irregular lakes; ragged coasts),
   never aggressive, and shaded softly so the map reads as brightly lit, one or two broad rivers crossing many maps so roads need bridges, farmsteads scattered
   over open country and joined to the roads by dirt tracks, a ring road a few hundred metres in from the
   shore or map edge, and compounds drawn with their own silhouettes (runway and hangars, stadium bowl,
@@ -95,7 +95,13 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   Towns grow organically: a winding main street (two in a city), side streets branching off, houses lining
   them and facing them, cleared ground around; roofs mostly cream with grey, terracotta, slate and white.
   Rivers about 130–180 m wide; shores alternate sandy bays and dark rocky stretches; a wavering reddish
-  play-zone line just inside the map edge with hatching outside. No faction simulation and no Minecraft export on battle maps: the owner wants them as
+  play-zone line just inside the map edge with hatching outside.
+  Snow maps: dark pine woods, frozen lakes (pale blue ice with cracks; the sea only freezes at the shore),
+  grey rock streaks on ridges, wind-drift texture, frozen streams, trodden ground around towns.
+  Desert maps: hills 1.5× higher than other climates, red rock banded by strata on mesas and slopes,
+  rippled dunes in some basins, pale dry washes (more drainage lines, read smoothly between cells), scrub
+  thicker along the washes, green at lake shores (oases). No farmland on snow or desert maps.
+  `W0.f.sea` marks open-sea water (reaches the map edge) as opposed to lakes. No faction simulation and no Minecraft export on battle maps: the owner wants them as
   pure design, as close as possible to the look of battle-royale maps.
 - Battle-map look ("Aerial" layer): an aerial-photo style, not flat biome colours. Muted ground per climate,
   woods shaded continuously from a regional density (soft dark mottling from afar, fading through scrub into open ground; sunlit crowns only once they are a few pixels wide, so nothing looks splattered), patches of brown bare earth, farmland parcels, bare rock on steep slopes, turquoise shallows and slate deep water, texture laid

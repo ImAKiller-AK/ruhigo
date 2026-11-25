@@ -39,7 +39,7 @@ function analyseWorld(){
   const landAcc=[];let land=0,peak=-1,peakH=-1;
   for(let k=0;k<GN;k++)if(hm[k]>=0){land++;landAcc.push(acc[k]);if(hm[k]>peakH){peakH=hm[k];peak=k;}}
   landAcc.sort((a,b)=>a-b);
-  const thr=Math.max(6,landAcc[Math.floor(landAcc.length*(isArena()?0.988:0.965))]||6);
+  const thr=Math.max(6,landAcc[Math.floor(landAcc.length*(isArena()?(P.theme==="desert"?0.975:0.988):0.965))]||6);
   const isR=new Uint8Array(GN);for(let k=0;k<GN;k++)if(hm[k]>=0&&acc[k]>=thr&&T[k]>-14)isR[k]=1;
   const inflow=new Uint8Array(GN);let mouths=0;
   for(let k=0;k<GN;k++)if(isR[k]){const r=recv[k];if(r>=0){if(isR[r])inflow[r]=1;else if(hm[r]<0)mouths++;}}
@@ -80,6 +80,12 @@ function analyseWorld(){
   }
   const bio=new Uint8Array(GN);for(let k=0;k<GN;k++)bio[k]=biome(hm[k],T[k],R[k]);
   const f={hm,T,R,isR,acc,recv,thr,bio};
+  if(isArena()){ // which water is open sea (reaches the map edge) and which is a lake: lakes freeze, or grow oases
+    const sea=new Uint8Array(GN),st=[];
+    for(let k=0;k<GN;k++){const i=k%GW,j=(k/GW)|0;if(hm[k]<0&&(i===0||j===0||i===GW-1||j===GH-1)){sea[k]=1;st.push(k);}}
+    while(st.length){const k=st.pop(),i=k%GW,j=(k/GW)|0;for(const n of [i>0?k-1:-1,i<GW-1?k+1:-1,j>0?k-GW:-1,j<GH-1?k+GW:-1])if(n>=0&&!sea[n]&&hm[n]<0){sea[n]=1;st.push(n);}}
+    f.sea=sea;
+  }
   if(isArena()){
     const {cities,bld,streets,deco,farms}=arenaPlaces(f);
     W0={kind:"arena",buckets,cities,bld,streets,deco,farms,tracks:[],land:land/GN,masses,mouths,peak:{x:(peak%GW+0.5)*cw,y:(((peak/GW)|0)+0.5)*ch,h:peakH},f,cost:null,costField:null,net:null,routes:[]};

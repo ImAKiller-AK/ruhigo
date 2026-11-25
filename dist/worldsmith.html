@@ -392,7 +392,7 @@ const THEMES={ // base temperature °C, rainfall range mm/yr: the biome function
 };
 const LAYOUTS={island:"Island",coast:"Coastal",inland:"Inland"};
 const arenaSea=()=>0.04+(P.sea-0.04)*0.35;               // the sea slider moves the shore less on a small map
-const arenaTop=()=>70+330*(P.rough-0.38)/0.26;            // highest hills, from the ruggedness slider (70–400 m, about 220 by default)
+const arenaTop=()=>(70+330*(P.rough-0.38)/0.26)*(P.theme==="desert"?1.5:1);            // highest hills, from the ruggedness slider (70–400 m, about 220 by default)
 function elevArena(x,y,oct){
   const S=noiseScale(),g=P.rough;
   const wx=fbm(N.w1,x*S*0.6,y*S*0.6,3,0.5),wy=fbm(N.w2,x*S*0.6+7.1,y*S*0.6+3.7,3,0.5);
@@ -496,7 +496,7 @@ function analyseWorld(){
   const landAcc=[];let land=0,peak=-1,peakH=-1;
   for(let k=0;k<GN;k++)if(hm[k]>=0){land++;landAcc.push(acc[k]);if(hm[k]>peakH){peakH=hm[k];peak=k;}}
   landAcc.sort((a,b)=>a-b);
-  const thr=Math.max(6,landAcc[Math.floor(landAcc.length*(isArena()?0.988:0.965))]||6);
+  const thr=Math.max(6,landAcc[Math.floor(landAcc.length*(isArena()?(P.theme==="desert"?0.975:0.988):0.965))]||6);
   const isR=new Uint8Array(GN);for(let k=0;k<GN;k++)if(hm[k]>=0&&acc[k]>=thr&&T[k]>-14)isR[k]=1;
   const inflow=new Uint8Array(GN);let mouths=0;
   for(let k=0;k<GN;k++)if(isR[k]){const r=recv[k];if(r>=0){if(isR[r])inflow[r]=1;else if(hm[r]<0)mouths++;}}
@@ -537,6 +537,12 @@ function analyseWorld(){
   }
   const bio=new Uint8Array(GN);for(let k=0;k<GN;k++)bio[k]=biome(hm[k],T[k],R[k]);
   const f={hm,T,R,isR,acc,recv,thr,bio};
+  if(isArena()){ // which water is open sea (reaches the map edge) and which is a lake: lakes freeze, or grow oases
+    const sea=new Uint8Array(GN),st=[];
+    for(let k=0;k<GN;k++){const i=k%GW,j=(k/GW)|0;if(hm[k]<0&&(i===0||j===0||i===GW-1||j===GH-1)){sea[k]=1;st.push(k);}}
+    while(st.length){const k=st.pop(),i=k%GW,j=(k/GW)|0;for(const n of [i>0?k-1:-1,i<GW-1?k+1:-1,j>0?k-GW:-1,j<GH-1?k+GW:-1])if(n>=0&&!sea[n]&&hm[n]<0){sea[n]=1;st.push(n);}}
+    f.sea=sea;
+  }
   if(isArena()){
     const {cities,bld,streets,deco,farms}=arenaPlaces(f);
     W0={kind:"arena",buckets,cities,bld,streets,deco,farms,tracks:[],land:land/GN,masses,mouths,peak:{x:(peak%GW+0.5)*cw,y:(((peak/GW)|0)+0.5)*ch,h:peakH},f,cost:null,costField:null,net:null,routes:[]};
@@ -2026,7 +2032,7 @@ function drawOverlay(){
   drawSimUnder(sx,sy,u);
   if(opt.rivers&&W0){const arR=W0.kind==="arena";
     const zf=Math.pow(view.zoom,0.42),widths=[0.8,1.1,1.5,2,2.6,3.3];
-    ctx.strokeStyle=arR&&mode==="biome"?"rgba(52,112,122,.8)":mode==="biome"||mode==="relief"?"rgba(58,118,166,.95)":"rgba(16,32,56,.75)";
+    ctx.strokeStyle=arR&&mode==="biome"?(P.theme==="desert"?"rgba(220,198,154,.8)":P.theme==="snow"?"rgba(196,212,224,.85)":"rgba(52,112,122,.8)"):mode==="biome"||mode==="relief"?"rgba(58,118,166,.95)":"rgba(16,32,56,.75)";
     for(let b=0;b<6;b++){
       const a=W0.buckets[b];if(!a.length)continue;ctx.lineWidth=arR?Math.min(7,widths[b]*0.6*zf):Math.min(14,widths[b]*zf);ctx.beginPath();
       for(let q=0;q<a.length;q+=4){
@@ -2149,8 +2155,8 @@ function arenaLabels(sx,sy){
 // Farmland appears as parcels on low, gentle ground where a slow noise allows it.
 const AERIAL={
   temperate:{open:[100,108,68],dry:[134,126,90],soil:[122,100,72],forest:[50,64,40],rock:[116,108,94],beach:[180,166,132],field:[[118,126,70],[150,140,86],[112,96,68],[96,112,62]],farm:0.62},
-  snow:{open:[222,226,231],dry:[200,205,211],soil:[168,160,150],forest:[62,74,68],rock:[100,100,103],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:0.75},
-  desert:{open:[150,118,84],dry:[182,150,106],soil:[126,94,66],forest:[106,98,64],rock:[106,80,60],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:0.5},
+  snow:{open:[222,226,231],dry:[200,205,211],soil:[150,144,136],forest:[40,56,48],rock:[88,90,96],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:9},
+  desert:{open:[156,122,86],dry:[184,152,108],soil:[132,96,66],forest:[84,86,54],rock:[132,82,58],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:9},
   jungle:{open:[86,108,56],dry:[128,118,78],soil:[124,98,66],forest:[42,68,36],rock:[108,98,82],beach:[182,168,130],field:[[110,126,60],[136,130,78],[92,116,52]],farm:0.58}
 };
 const mixc=(c,t)=>{col[0]+=(c[0]-col[0])*t;col[1]+=(c[1]-col[1])*t;col[2]+=(c[2]-col[2])*t;};
@@ -2161,7 +2167,15 @@ function aerial(wx,wy,h,R,sl,top,mpp){
     const dd=-h,t1=smooth(0,9,dd),t2=smooth(9,50,dd),w=0.04*N.t(mx/90,my/90);
     col[0]=72;col[1]=164;col[2]=160;mixc([30,98,118],t1);mixc([14,40,64],t2);
     const rocky=smooth(0.02,0.28,N.c(mx/1100+2.7,my/1100-6.3));if(rocky>0)mixc([34,92,106],rocky*0.55*(1-t2)); // no turquoise off rocks
-    col[0]*=1+w;col[1]*=1+w;col[2]*=1+w;return;
+    col[0]*=1+w;col[1]*=1+w;col[2]*=1+w;
+    if(P.theme==="snow"&&W0&&W0.f.sea){ // lakes and shallow shores freeze: pale blue ice, cracks, drifted snow
+      const k=Math.min(GH-1,Math.floor(wy*GH))*GW+Math.min(GW-1,Math.floor(wx/WX*GW)),ice=W0.f.sea[k]?smooth(5,1,dd):1;
+      if(ice>0){
+        const crack=smooth(0.05,0.0,Math.abs(N.e(mx/55+1.3,my/55)))*0.5+smooth(0.03,0.0,Math.abs(N.e(mx/19,my/19+4)))*0.3;
+        mixc([188,212,226],ice);mixc([132,164,184],ice*crack);mixc([232,238,244],ice*0.4*smooth(-0.3,0.9,N.t(mx/150,my/150)+0.35*N.t(mx/33,my/33)));
+      }
+    }
+    return;
   }
   const lo=THEMES[P.theme].R[0],hi=THEMES[P.theme].R[1],m=(R-lo)/(hi-lo);
   const p1=N.t(mx/160+31,my/160),p2=N.t(mx/38-17,my/38+5),p3=N.t(mx/12+3,my/12-9);
@@ -2175,15 +2189,24 @@ function aerial(wx,wy,h,R,sl,top,mpp){
   // ending in a cut-out edge; single crowns (light tops, dark gaps, ~7 m) only show once they are a few pixels
   // wide, and from afar a wood reads as soft dark mottling, as on an aerial photo
   const fine=smooth(7,2.5,mpp);
+  // cell lookups: how much water drains through here (dry washes in the desert) and whether a lake is near
+  const ck=W0&&W0.f?Math.min(GH-1,Math.floor(wy*GH))*GW+Math.min(GW-1,Math.floor(wx/WX*GW)):-1;
+  let wash=0;
+  if(ck>=0){ // drainage read between cell centres (bilinear), so dry washes are smooth ribbons, not 20 m squares
+    const f=W0.f,gx=Math.max(0,Math.min(GW-1.001,wx/WX*GW-0.5)),gy=Math.max(0,Math.min(GH-1.001,wy*GH-0.5)),i=gx|0,j=gy|0,tx=gx-i,ty=gy-j,k=j*GW+i;
+    const a=v=>smooth(0.08,0.6,v/f.thr);
+    wash=(a(f.acc[k])*(1-tx)+a(f.acc[k+1])*tx)*(1-ty)+(a(f.acc[k+GW])*(1-tx)+a(f.acc[k+GW+1])*tx)*ty;
+  }
+  const lake=ck>=0&&h<16&&[ck,ck-2,ck+2,ck-2*GW,ck+2*GW].some(n=>n>=0&&n<GN&&W0.f.hm[n]<0&&!W0.f.sea[n]); // a lake shore
   let dens=smooth(0.3,0.85,m+0.28*p1+0.12*p2-0.35*smooth(top*0.3,top*0.75,h));
-  if(P.theme==="desert")dens*=0.5;else if(P.theme==="snow")dens*=smooth(0.4,0.85,m+0.2*p1);
+  if(P.theme==="desert")dens*=0.3;else if(P.theme==="snow")dens=smooth(0.36,0.82,m+0.32*p1+0.12*p2); // snowy hills carry dark pine woods
   const p4=N.e(mx/6.5+7,my/6.5-3);
   let cl=0; // towns and compounds stand in cleared, trodden ground: fewer trees, each still crisp
   if(W0&&W0.kind==="arena")for(const c of W0.cities){const dx=mx-c.x*MPU,dy=my-c.y*MPU,R=c.r*1.2+40;if(dx*dx+dy*dy<R*R)cl=Math.max(cl,smooth(R,c.r*0.75,Math.sqrt(dx*dx+dy*dy)+30*p2));}
   if(cl>0){dens*=1-cl*0.9;mixc(th.soil,cl*0.25);}
   let fo=Math.max(0,Math.min(1,(dens-0.12)*1.35+0.22*p2+0.18*p3+0.3*p4*fine));
   fo=fo*fo*(3-2*fo);
-  const scrub=(1-fo)*smooth(0.15,0.75,p3*0.6+p2*0.5+0.3*m)*(P.theme==="desert"?0.25:P.theme==="snow"?0.15:0.38)*(1-cl*0.6); // bushes and lone trees, soft
+  const scrub=(1-fo)*smooth(0.15,0.75,p3*0.6+p2*0.5+0.3*m)*(P.theme==="desert"?0.32*(0.5+wash):P.theme==="snow"?0.22:0.38)*(1-cl*0.6); // bushes and lone trees, soft
 
   // farmland: parcels of 70–160 m with thin darker margins, never on slopes or high ground
   const fm=smooth(th.farm,th.farm+0.05,N.c(mx/1400+4.1,my/1400))*smooth(0.12,0.05,sl)*smooth(top*0.45,top*0.2,h);
@@ -2199,11 +2222,23 @@ function aerial(wx,wy,h,R,sl,top,mpp){
     if(P.theme==="snow")mixc([224,228,232],fo*(0.1+0.3*fine*smooth(0,0.7,p4))); // snow lying on the crowns
   }
   // bare rock on steep slopes and the highest ground; sand on the beach
-  const rk=P.theme==="snow"?0.5:1; // snow clings to all but the steepest ground
-  mixc(th.rock,rk*Math.min(0.8,0.85*smooth(0.45,1.0,sl+0.12*p2)+0.4*smooth(top*0.75,top,h)));
+  if(P.theme==="snow"){ // wind strips the snow off ridges and steep faces in grey streaks; drifts ripple the rest
+    mixc(th.rock,Math.min(0.85,smooth(0.12,0.34,sl+0.1*p2+0.06*p3)*(0.6+0.4*smooth(-0.2,0.4,p2))+0.35*smooth(top*0.8,top,h)));
+    const drift=0.96+0.05*p1+0.04*Math.sin(mx/23+my/41+3*p2);col[0]*=drift;col[1]*=drift;col[2]*=drift*1.01;
+    if(cl>0)mixc(th.soil,cl*0.35); // trodden ground around towns
+  }else if(P.theme==="desert"){
+    // red rock on mesas and slopes, banded by strata; rippled dunes in a few basins; pale dry washes; green at the oases
+    const steep=0.85*smooth(0.04,0.5,sl+0.1*p2+0.05*p1),strata=0.84+0.16*Math.sin(h/9+2*p2); // wide ramp: no faceting
+    mixc([th.rock[0]*strata,th.rock[1]*strata,th.rock[2]*strata],Math.min(0.9,steep+0.5*smooth(top*0.55,top*0.9,h)));
+    const dune=smooth(0.35,0.6,N.k(mx/1700+5,my/1700-8))*smooth(0.1,0.03,sl);
+    if(dune>0){mixc([212,180,132],dune*0.7);const rip=0.94+0.07*Math.sin(mx/11+my/27+4*p1);col[0]*=1+(rip-1)*dune;col[1]*=1+(rip-1)*dune;col[2]*=1+(rip-1)*dune;}
+    mixc([214,190,146],wash*0.55*(1-steep));
+    const oasis=lake?smooth(16,4,h):0;
+    if(oasis>0)mixc([70,96,48],oasis*(0.55+0.3*p3));
+  }else mixc(th.rock,Math.min(0.8,0.85*smooth(0.45,1.0,sl+0.12*p2)+0.4*smooth(top*0.75,top,h)));
   // the shore alternates: sand in the bays, dark rock and boulders along rocky stretches
   const rocky=smooth(0.02,0.28,N.c(mx/1100+2.7,my/1100-6.3));
-  mixc(th.beach,smooth(9,5,h)*(1-rocky));
+  mixc(th.beach,smooth(9,5,h)*(1-rocky)*(P.theme==="desert"&&lake?0.3:1));
   if(rocky>0){const sh=smooth(16,5,h)*rocky;mixc([th.rock[0]*0.72,th.rock[1]*0.72,th.rock[2]*0.74],sh*(0.75+0.25*p3));}
   const g=1+0.05*p3+0.05*fine*(hash2(Math.floor(mx/4),Math.floor(my/4))-0.5); // grain, only where it can be seen
   col[0]*=g;col[1]*=g;col[2]*=g;
