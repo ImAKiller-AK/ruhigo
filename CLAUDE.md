@@ -84,12 +84,12 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
 
 - Battle maps (asked for by the owner, modelled on 8×8 km battle-royale maps): original names and layouts,
   sizes 4/6/8 km, about 2.6 named places per km of width, relief organised in regions (one or two blocks
-  of rounded, browner highland; broad, gently rolling lowland with a few irregular lakes; ragged coasts),
+  of low, rounded, browner hills (about 220 m at most by default); broad, gently rolling lowland with a few irregular lakes; ragged coasts),
   never aggressive, and shaded softly so the map reads as brightly lit, one or two broad rivers crossing many maps so roads need bridges, farmsteads scattered
   over open country. No faction simulation and no Minecraft export on battle maps: the owner wants them as
   pure design, as close as possible to the look of battle-royale maps.
 - Battle-map look ("Aerial" layer): an aerial-photo style, not flat biome colours. Muted ground per climate,
-  woods, farmland parcels, bare rock on steep slopes, turquoise shallows and slate deep water, texture laid
+  woods built from single crowns (clumps, glades, frayed edges and lone trees, never flat patches), farmland parcels, bare rock on steep slopes, turquoise shallows and slate deep water, texture laid
   in world space so it holds still while panning; pale roads with a faint shadow, grey bridges, cream
   buildings, white place names with a soft dark halo and no markers. Names and layouts stay original.
 

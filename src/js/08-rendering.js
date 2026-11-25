@@ -274,8 +274,14 @@ function aerial(wx,wy,h,R,sl,top){
   // open ground, drier where the clumps say so, then forest where it is wet enough
   col[0]=th.open[0];col[1]=th.open[1];col[2]=th.open[2];
   mixc(th.dry,Math.max(0,Math.min(1,0.45+0.7*p2-0.5*m+0.3*p1+0.9*smooth(top*0.2,top*0.65,h)))); // highland turns brown and dry
-  let fo=smooth(0.42,0.66,m+0.28*p1+0.12*p2-0.35*smooth(top*0.3,top*0.75,h));
-  if(P.theme==="desert")fo*=0.45;else if(P.theme==="snow")fo*=smooth(0.55,0.8,m+0.2*p1);
+  // woods are built from trees, not painted as patches: a soft regional density decides how many trees stand
+  // here, and noise at the scale of single crowns (~6 and ~12 m) turns it into clumps, glades and lone trees,
+  // so edges fray out instead of ending in a hard line
+  let dens=smooth(0.3,0.85,m+0.28*p1+0.12*p2-0.35*smooth(top*0.3,top*0.75,h));
+  if(P.theme==="desert")dens*=0.5;else if(P.theme==="snow")dens*=smooth(0.4,0.85,m+0.2*p1);
+  const p4=N.e(mx/6.5+7,my/6.5-3);
+  let fo=dens>0.02?smooth(-0.12,0.16,dens*1.25-0.62+0.42*p3+0.28*p4+0.12*p2):0;
+  fo=Math.max(fo,smooth(0.62,0.8,p4*0.75+p3*0.35)*(P.theme==="desert"?0.35:0.75)); // lone trees dotted over open ground
   // farmland: parcels of 70–160 m with thin darker margins, never on slopes or high ground
   const fm=smooth(th.farm,th.farm+0.18,N.c(mx/1400+4.1,my/1400))*smooth(0.12,0.05,sl)*smooth(top*0.45,top*0.2,h);
   if(fm>0.02){
@@ -283,7 +289,10 @@ function aerial(wx,wy,h,R,sl,top){
     const pick=hash2(ix,iy),fc=th.field[Math.floor(pick*th.field.length)],edge=Math.min(fx,1-fx)*150<3||Math.min(fy,1-fy)*75<3;
     mixc(fc,fm*(edge?0.55:0.92));if(edge)mixc([60,62,44],fm*0.25);fo*=1-fm;
   }
-  if(fo>0){const crown=0.82+0.3*(p3*0.5+0.5);mixc([th.forest[0]*crown,th.forest[1]*crown,th.forest[2]*crown],fo);}
+  if(fo>0){
+    const crown=0.78+0.32*(p4*0.5+0.5);mixc([th.forest[0]*crown,th.forest[1]*crown,th.forest[2]*crown],fo);
+    if(P.theme==="snow")mixc([224,228,232],fo*smooth(0.1,0.6,p4+0.3*p3)*0.55); // snow lying on the crowns
+  }
   // bare rock on steep slopes and the highest ground; sand on the beach
   const rk=P.theme==="snow"?0.5:1; // snow clings to all but the steepest ground
   mixc(th.rock,rk*Math.min(0.8,0.85*smooth(0.45,1.0,sl+0.12*p2)+0.4*smooth(top*0.75,top,h)));
