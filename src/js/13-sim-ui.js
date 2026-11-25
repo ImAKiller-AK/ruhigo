@@ -376,6 +376,9 @@ function drawArenaRoads(sx,sy){
   const net=W0.net;if(!opt.roads||!net)return;
   const zf=Math.pow(view.zoom,0.45),ws=[1,1.3,1.8,2.4];
   const trace=list=>{ctx.beginPath();for(const s of list){ctx.moveTo(sx(s[0]),sy(s[1]));for(let q=2;q<s.length;q+=2)ctx.lineTo(sx(s[q]),sy(s[q+1]));}ctx.stroke();};
+  if(W0.tracks.length){ // dirt tracks: thin, pale and a little broken, under everything else
+    ctx.strokeStyle="rgba(206,198,172,.62)";ctx.lineWidth=Math.min(4,Math.max(0.9,0.75*zf));trace(W0.tracks);
+  }
   if(view.zoom>=2.2){ // town streets, once there is room for them
     const st=W0.streets,lw=Math.min(9,0.9*zf);ctx.beginPath();
     for(let q=0;q<st.length;q+=4){ctx.moveTo(sx(st[q]),sy(st[q+1]));ctx.lineTo(sx(st[q+2]),sy(st[q+3]));}

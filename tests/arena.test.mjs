@@ -40,6 +40,13 @@ for (const [seed, layout, theme] of CASES) {
     assert.ok(W.net && W.net.km > 15, "road network too short");
     assert.ok(W.net.bridges >= 0 && W.net.bridges < 30, `${W.net.bridges} bridges`);
     assert.ok(ms.terrain + ms.roads < 8000, "too slow");
+
+    // a ring road, dirt tracks out to the farmsteads, and landmark compounds with their own ground marks
+    assert.ok(W.ring && W.ring.length >= 8, "no ring road");
+    assert.ok(W.tracks.length > 40, `only ${W.tracks.length} dirt tracks`);
+    assert.ok(kinds.includes("Military Base"), "an 8 km map without a military base");
+    for (const c of W.cities) if (c.cls === "site") assert.ok(c.deco[1] > c.deco[0] || c.pop > 0, `${c.name} is empty`);
+    for (const d of W.deco) assert.ok(Number.isFinite(d.x ?? d.p[0]) && Number.isFinite(d.y ?? d.p[1]), "a ground mark has no position");
   });
 }
 

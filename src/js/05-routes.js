@@ -164,20 +164,77 @@ function* routeTask(gen,onUpdate){
   }
   const pairs=[...want.values()].map(([i,j])=>({i,j,w:Math.sqrt(cities[i].pop*cities[j].pop)/1e5,pull:cities[i].pop*cities[j].pop/d2(cities[i],cities[j])})).sort((p,q)=>q.pull-p.pull);
   W0.net=null;W0.routes=routes;onUpdate(0,pairs.length,0,false);
+  const lay=(path,w)=>{
+    for(let q=0;q<path.length;q++){
+      const k=path[q];cost.road[k]=W0.f.hm[k]<0?LANE:ROAD;
+      if(q){const sk=segKey(path[q-1],k);seg.set(sk,(seg.get(sk)||0)+w);}
+    }
+  };
+  if(isArena()){ // a ring road first, a few hundred metres in from the shore or the map edge; town roads then join it
+    const pts=ringWaypoints(W0.f),w=Math.max(...pairs.map(p=>p.w))*0.7;W0.ring=[];
+    for(let n=0;n<pts.length;n++){
+      const path=yield* pf.find(pts[n],pts[(n+1)%pts.length]);if(gen!==routeGen)return;
+      if(path){lay(path,w);W0.ring.push(path);}
+    }
+    if(W0.ring.length)W0.net=traceNetwork(seg,cost);
+  }
   for(let n=0;n<pairs.length;n++){
     const p=pairs[n],path=yield* pf.find(cities[p.i].k,cities[p.j].k);
     if(gen!==routeGen)return;
     if(path){
-      for(let q=0;q<path.length;q++){
-        const k=path[q];cost.road[k]=W0.f.hm[k]<0?LANE:ROAD;
-        if(q){const sk=segKey(path[q-1],k);seg.set(sk,(seg.get(sk)||0)+p.w);}
-      }
+      lay(path,p.w);
       routes.push({a:p.i,b:p.j,path,w:p.w});
       W0.net=traceNetwork(seg,cost);
     }
-    onUpdate(n+1,pairs.length,W0.net?W0.net.km:0,n===pairs.length-1);
+    onUpdate(n+1,pairs.length,W0.net?W0.net.km:0,n===pairs.length-1&&!isArena());
     yield;
   }
+  if(isArena()){
+    const t=yield* trackTask(cost,gen);if(!t)return;W0.tracks=t;
+    onUpdate(pairs.length,pairs.length,W0.net?W0.net.km:0,true);
+  }
+}
+// ring road waypoints: around the map centre, the outermost land at a set distance from water or the map edge
+function ringWaypoints(f){
+  const d=new Int16Array(GN).fill(-1),q=new Int32Array(GN);let h=0,t=0;
+  for(let k=0;k<GN;k++){const i=k%GW,j=(k/GW)|0;if(f.hm[k]<0||i===0||j===0||i===GW-1||j===GH-1){d[k]=0;q[t++]=k;}}
+  while(h<t){const k=q[h++],i=k%GW,j=(k/GW)|0;for(const n of [i>0?k-1:-1,i<GW-1?k+1:-1,j>0?k-GW:-1,j<GH-1?k+GW:-1])if(n>=0&&d[n]<0){d[n]=d[k]+1;q[t++]=n;}}
+  const D=Math.round(420/CELL_M),pts=[];
+  for(let a=0;a<16;a++){
+    const th=a*Math.PI/8+0.2,dx=Math.cos(th),dy=Math.sin(th);let best=-1;
+    for(let s=0;s<GW*0.72;s++){
+      const i=Math.round(GW/2+dx*s),j=Math.round(GH/2+dy*s);if(i<0||j<0||i>=GW||j>=GH)break;
+      const k=j*GW+i;if(f.hm[k]>=0&&d[k]>=D&&d[k]<=D+5)best=k;
+    }
+    if(best>=0)pts.push(best);
+  }
+  return pts;
+}
+// dirt tracks: one Dijkstra outward from every road cell over dry land; each farmstead (and a scatter of points in
+// open country) follows the cheapest way back, joining the first track it meets, so the tracks branch like real ones
+function* trackTask(cost,gen){
+  const f=cost.f,dist=new Float32Array(GN).fill(1e9),from=new Int32Array(GN).fill(-1),done=new Uint8Array(GN),heap=new MinHeap(1<<16);
+  for(let k=0;k<GN;k++)if(cost.road[k]<1&&f.hm[k]>=0){dist[k]=0;heap.push(k,0);}
+  let pops=0;
+  while(heap.n){
+    const k=heap.pop();if(done[k])continue;done[k]=1;const ki=k%GW,kj=(k/GW)|0;
+    for(let dd=0;dd<8;dd++){
+      const ni=ki+DX8[dd],nj=kj+DY8[dd];if(ni<0||nj<0||ni>=GW||nj>=GH)continue;const n=nj*GW+ni;
+      if(done[n]||f.hm[n]<0)continue;const c=dist[k]+cost.step(k,n,DIAG[dd]);
+      if(c<dist[n]){dist[n]=c;from[n]=k;heap.push(n,c);}
+    }
+    if((++pops&8191)===0){yield;if(gen!==routeGen)return null;}
+  }
+  const ends=W0.farms.slice(),rr=mulberry32(seedHash(P.seed)^0x6a09e667),extra=Math.round(P.km*P.km*0.6);
+  for(let n=0,tries=0;n<extra&&tries<extra*20;tries++){const k=Math.floor(rr()*GN);if(f.hm[k]>=8&&dist[k]<1e9){ends.push(k);n++;}}
+  const used=new Uint8Array(GN),out=[];
+  for(const k0 of ends){
+    if(dist[k0]>=1e9||used[k0])continue;
+    const path=[];let k=k0;
+    while(k>=0){path.push(k);if(dist[k]===0||used[k])break;used[k]=1;k=from[k];}
+    if(path.length>3)out.push(smoothPath(path,cost.city));
+  }
+  return out;
 }
 // bilinear sample of the per-cell cost picture at a world position
 function costAt(wx,wy){

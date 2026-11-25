@@ -81,8 +81,8 @@ function analyseWorld(){
   const bio=new Uint8Array(GN);for(let k=0;k<GN;k++)bio[k]=biome(hm[k],T[k],R[k]);
   const f={hm,T,R,isR,acc,recv,thr,bio};
   if(isArena()){
-    const {cities,bld,streets}=arenaPlaces(f);
-    W0={kind:"arena",buckets,cities,bld,streets,land:land/GN,masses,mouths,peak:{x:(peak%GW+0.5)*cw,y:(((peak/GW)|0)+0.5)*ch,h:peakH},f,cost:null,costField:null,net:null,routes:[]};
+    const {cities,bld,streets,deco,farms}=arenaPlaces(f);
+    W0={kind:"arena",buckets,cities,bld,streets,deco,farms,tracks:[],land:land/GN,masses,mouths,peak:{x:(peak%GW+0.5)*cw,y:(((peak/GW)|0)+0.5)*ch,h:peakH},f,cost:null,costField:null,net:null,routes:[]};
     return;
   }
   // settlements: rivers, coasts, mild climate, low ground
@@ -114,7 +114,7 @@ function analyseWorld(){
 /* ---------------- Arena: named places and their buildings ---------------- */
 // Compounds a battle map can hold: name, radius (m), building size range (m), number of buildings, preferred ground
 const COMPOUNDS=[
-  ["Military Base",300,[26,64],16,"any"],["Power Plant",210,[24,58],7,"any"],["Quarry",170,[12,30],5,"hill"],
+  ["Military Base",300,[26,64],16,"any"],["Power Plant",210,[24,58],7,"any"],["Quarry",170,[12,30],5,"any"],
   ["Factory",190,[30,62],8,"any"],["School",110,[22,42],4,"any"],["Hospital",120,[22,46],4,"any"],
   ["Prison",150,[20,50],6,"any"],["Farm",170,[10,26],7,"flat"],["Ruins",150,[8,22],11,"any"],
   ["Stadium",170,[24,40],4,"flat"],["Lumber Mill",150,[14,34],6,"forest"],["Radio Station",90,[10,22],3,"hill"],
@@ -128,6 +128,11 @@ function arenaPlaces(f){
   const slope=k=>(Math.abs(hm[k+1]-hm[k-1])+Math.abs(hm[k+GW]-hm[k-GW]))/(2*CELL_M);
   const waterWithin=(k,r,step)=>{const i=k%GW,j=(k/GW)|0;for(let dj=-r;dj<=r;dj+=step)for(let di=-r;di<=r;di+=step){const i2=i+di,j2=j+dj;if(i2>=0&&j2>=0&&i2<GW&&j2<GH&&hm[j2*GW+i2]<0)return true;}return false;};
   const coastAt=k=>waterWithin(k,8,4);
+  const seaAt=k=>{ // the sea or a big lake nearby, not a pond: a third of the ground within ~500 m is water
+    if(!waterWithin(k,10,2))return false;const i=k%GW,j=(k/GW)|0,R=25;let w=0,n=0;
+    for(let dj=-R;dj<=R;dj+=5)for(let di=-R;di<=R;di+=5){const i2=i+di,j2=j+dj;if(i2<0||j2<0||i2>=GW||j2>=GH)continue;n++;if(hm[j2*GW+i2]<0)w++;}
+    return w/n>0.3;
+  };
   let top=1;for(let k=0;k<GN;k++)if(hm[k]>top)top=hm[k];
   // candidate sites: dry, gentle ground away from the map edge; water nearby is a bonus, as it is for real towns
   const cand=[],m=8;
@@ -152,17 +157,25 @@ function arenaPlaces(f){
     else if(i<nCity+nTown){c.cls="town";c.r=240;}
     else if(rr()<0.42){c.cls="village";c.r=140;}
     else{
-      const site=coastAt(c.k)?"coast":c.h>top*0.55?"hill":[6,9,10,13,14].includes(c.biome)?"forest":slope(c.k)<0.03?"flat":"any";
+      const site=seaAt(c.k)?"coast":c.h>top*0.3?"hill":[6,9,10,13,14].includes(c.biome)?"forest":slope(c.k)<0.03?"flat":"any";
       const fits=COMPOUNDS.filter(t=>!used.has(t[0])&&(t[4]===site||t[4]==="any"));
-      const t=fits.find(t=>t[4]===site&&rr()<0.7)||fits[Math.floor(rr()*fits.length)];
+      const t=fits.find(t=>t[4]===site&&rr()<0.5)||fits[Math.floor(rr()*fits.length)];
       if(!t){c.cls="village";c.r=140;}
       else{used.add(t[0]);c.cls="site";c.kind=t[0];c.r=t[1];c.spec=t;}
     }
+  });
+  // every map of 6 km or more has a military base, out in the most remote compound (as on real battle maps)
+  const MB=COMPOUNDS[0],sites=picks.filter(c=>c.cls==="site");
+  if(P.km>=6&&!used.has(MB[0])&&sites.length){
+    const far=sites.reduce((a,c)=>Math.hypot(c.x-WX/2,c.y-0.5)>Math.hypot(a.x-WX/2,a.y-0.5)?c:a);
+    used.delete(far.kind);used.add(MB[0]);far.kind=MB[0];far.r=MB[1];far.spec=MB;
+  }
+  picks.forEach(c=>{
     c.name=c.cls==="site"?(rr()<0.45?word()+" ":"")+c.kind:word();
     if(!c.kind)c.kind=PLACE_CLS[c.cls];
   });
   // buildings: towns are blocks of houses between streets laid out at a local angle; compounds are a few large sheds
-  const out=[],streets=[];
+  const out=[],streets=[],deco=[],farms=[];
   const street=(x1,y1,x2,y2)=>{ // keep only the stretches over dry land
     const n=Math.max(2,Math.ceil(Math.hypot(x2-x1,y2-y1)*MPU/10));let a=-1;
     for(let q=0;q<=n;q++){const t=q/n,x=x1+(x2-x1)*t,y=y1+(y2-y1)*t,dry=x>=0&&y>=0&&x<WX&&y<1&&hm[Math.floor(y*GH)*GW+Math.floor(x/cw)]>=2;
@@ -175,11 +188,14 @@ function arenaPlaces(f){
     const r=mulberry32(hs^Math.imul(c.k+1,0x9E3779B1)),ang=r()*Math.PI/2,ca=Math.cos(ang),sa=Math.sin(ang),b0=out.length;
     const add=(u,v,w,h)=>{const x=c.x+(u*ca-v*sa)*M,y=c.y+(u*sa+v*ca)*M;if(ok(x,y))out.push(x,y,w*M,h*M,ang);};
     if(c.cls==="site"){
-      const [,R,[lo,hi],n]=c.spec,L=hi*1.25;let made=0;
-      for(let ring=0;ring<6&&made<n;ring++)for(let gx=-ring;gx<=ring&&made<n;gx++)for(let gy=-ring;gy<=ring&&made<n;gy++){
-        if(Math.max(Math.abs(gx),Math.abs(gy))!==ring||gx*L>R||gy*L>R)continue;
+      const d0=deco.length;
+      siteLayout(c,{add,r,ang,M,ok,deco,hm,cw,waterDir:()=>waterDir(c,hm,cw)});
+      const [,R,[lo,hi],n]=c.spec,L=hi*1.25;let made=(out.length-b0)/5;
+      if(deco.length===d0)for(let ring=0;ring<6&&made<n;ring++)for(let gx=-ring;gx<=ring&&made<n;gx++)for(let gy=-ring;gy<=ring&&made<n;gy++){
+        if(Math.max(Math.abs(gx),Math.abs(gy))!==ring||gx*L>R||gy*L>R)continue; // fallback: a plain cluster of sheds
         const n0=out.length;add(gx*L+(r()-0.5)*8,gy*L+(r()-0.5)*8,lo+(hi-lo)*r(),lo+(hi-lo)*r()*0.8);if(out.length>n0)made++;
       }
+      c.deco=[d0,deco.length];
     }else{
       const L=c.cls==="city"?30:c.cls==="town"?33:42,dens=c.cls==="village"?0.5:0.86,big=c.cls==="city"?1.35:1;
       const offs=c.cls==="city"?[0,-3.5*L,3.5*L]:c.cls==="town"?[0,2.5*L]:[0]; // street lines, the same both ways
@@ -202,6 +218,7 @@ function arenaPlaces(f){
     const x=0.03+fr()*0.94*WX,y=0.03+fr()*0.94,k=Math.floor(y*GH)*GW+Math.floor(x/cw);
     if(hm[k]<5||isR[k]||slope(k)>0.16||waterWithin(k,2,1))continue;
     if(picks.some(c=>Math.hypot(c.x-x,c.y-y)<c.r*M+clear))continue;
+    farms.push(k);
     const ang=fr()*Math.PI/2,ca=Math.cos(ang),sa=Math.sin(ang),n=1+Math.floor(fr()*fr()*4);
     for(let q=0;q<n;q++){
       const u=q?(fr()-0.5)*40:0,v=q?(fr()-0.5)*40:0,px=x+(u*ca-v*sa)*M,py=y+(u*sa+v*ca)*M;
@@ -209,5 +226,114 @@ function arenaPlaces(f){
     }
     made++;
   }
-  return {cities:picks,bld:Float32Array.from(out),streets:Float32Array.from(streets)};
+  return {cities:picks,bld:Float32Array.from(out),streets:Float32Array.from(streets),deco,farms};
+}
+
+/* ---- landmark layouts: each kind of compound gets the silhouette that makes it readable from the air ---- */
+// Ground marks (deco) are shapes in world units: rect {t,x,y,w,h,a} for paving, fields, runways, piers and pools;
+// circ {t,x,y,r} for tanks, towers and pads; oval {t,x,y,rx,ry,a} for a stadium bowl; line {t,p,closed} for walls,
+// fences and rails; pit {t,x,y,r} for a quarry's terraces. Buildings go through add() like any other.
+function waterDir(c,hm,cw){ // direction (radians) and distance (m) to the nearest water within reach, or null
+  let best=null;
+  for(let a=0;a<16;a++){
+    const th=a*Math.PI/8,dx=Math.cos(th),dy=Math.sin(th);
+    for(let d=20;d<=c.r+260;d+=10){
+      const x=c.x+dx*d/MPU,y=c.y+dy*d/MPU;if(x<0||y<0||x>=WX||y>=1)break;
+      if(hm[Math.floor(y*GH)*GW+Math.floor(x/cw)]<0){if(!best||d<best.d)best={th,d};break;}
+    }
+  }
+  return best;
+}
+function siteLayout(c,o){
+  const {add,r,ang,M,ok,deco}=o,ca=Math.cos(ang),sa=Math.sin(ang);
+  const W=(u,v)=>[c.x+(u*ca-v*sa)*M,c.y+(u*sa+v*ca)*M];
+  const rect=(t,u,v,w,h,force)=>{const [x,y]=W(u,v);if(force||ok(x,y))deco.push({t,x,y,w:w*M,h:h*M,a:ang});};
+  const circ=(t,u,v,rad)=>{const [x,y]=W(u,v);if(ok(x,y))deco.push({t,x,y,r:rad*M});};
+  const line=(t,pts,closed)=>{const p=[];for(const [u,v] of pts)p.push(...W(u,v));deco.push({t,p,closed:!!closed});};
+  const box=(t,hw,hh)=>line(t,[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]],true);
+  const dry=(u,v)=>{const [x,y]=W(u,v);return ok(x,y);};
+  const alongDry=(u0,v0,u1,v1)=>{for(let s=0;s<=1;s+=0.1)if(!dry(u0+(u1-u0)*s,v0+(v1-v0)*s))return false;return true;};
+  switch(c.kind){
+    case "Military Base":{
+      let L=560;while(L>240&&!alongDry(-L/2,-70,L/2,-70))L-=80;
+      if(L>240){rect("runway",0,-70,L,34,true);}
+      rect("pave",0,10,240,70);
+      for(const u of [-80,0,80])add(u,10,44,32); // hangars
+      for(let i=0;i<8;i++)add(-120+(i%4)*80,70+Math.floor(i/4)*34,34,13); // barracks
+      add(150,40,14,14);circ("pad",150,-10,12);
+      box("fence",Math.max(L/2,170)+20,140);break;
+    }
+    case "Power Plant":{
+      rect("pave",0,0,240,160);
+      for(const u of [-70,-15,40])circ("tower",u,-45,23);
+      add(-20,30,80,30);add(70,35,30,20);circ("tank",95,-30,10);circ("tank",95,-5,10);
+      box("fence",130,90);break;
+    }
+    case "Stadium":{
+      const [x,y]=W(0,0);deco.push({t:"oval",x,y,rx:95*M,ry:72*M,a:ang});
+      rect("pitch",0,0,92,58,true);rect("pave",0,120,150,50);add(-60,120,24,14);add(60,120,24,14);break;
+    }
+    case "Quarry":{
+      const [x,y]=W(0,0);deco.push({t:"pit",x,y,r:115*M});
+      add(150,-40,26,14);add(150,-10,18,12);add(140,40,30,16);rect("pave",150,0,70,120);break;
+    }
+    case "Factory":{
+      rect("pave",0,0,220,150);add(-40,-20,90,54);add(60,30,62,40);add(-70,50,30,18);
+      circ("tank",80,-45,11);circ("tank",56,-45,11);box("fence",125,90);break;
+    }
+    case "Prison":{
+      rect("yard",0,0,180,180);box("wall",95,95);
+      add(0,0,70,16);add(0,-45,70,16);add(0,45,70,16);add(-60,0,16,60);
+      for(const [u,v] of [[-95,-95],[95,-95],[95,95],[-95,95]])add(u,v,8,8);break;
+    }
+    case "Fuel Depot":{
+      rect("pave",0,0,150,110);for(let i=0;i<6;i++)circ("tank",-45+(i%3)*45,-22+Math.floor(i/3)*44,15);
+      add(0,62,30,14);box("fence",85,70);break;
+    }
+    case "Train Yard":{
+      let L=520;while(L>200&&!alongDry(-L/2,0,L/2,0))L-=80;
+      for(let i=0;i<6;i++){const v=-20+i*8;line("rail",[[-L/2,v],[L/2,v]]);}
+      add(0,-45,110,22);add(-150,30,40,18);add(140,30,26,16);rect("pave",0,-45,150,40);break;
+    }
+    case "Harbor":case "Shipyard":case "Lighthouse":{
+      const wd=o.waterDir();
+      if(c.kind==="Lighthouse"){circ("lighthouse",0,0,7);add(18,0,14,10);}
+      else{for(let i=0;i<5;i++)add(-80+i*40,-10+(i%2)*28,c.kind==="Shipyard"?46:32,18);rect("pave",0,0,220,70);}
+      if(wd&&c.kind!=="Lighthouse"){ // piers or a slipway reaching out from the shore
+        const dx=Math.cos(wd.th),dy=Math.sin(wd.th),px=-dy,py=dx,n=c.kind==="Shipyard"?2:4;
+        for(let i=0;i<n;i++){
+          const off=(i-(n-1)/2)*45,len=c.kind==="Shipyard"?130:90,d=wd.d-15+len/2;
+          deco.push({t:"pier",x:c.x+(dx*d+px*off)*M,y:c.y+(dy*d+py*off)*M,w:len*M,h:(c.kind==="Shipyard"?30:10)*M,a:wd.th});
+        }
+      }
+      break;
+    }
+    case "School":{
+      add(-40,-20,70,16);add(-75,10,16,50);const [x,y]=W(60,10);deco.push({t:"oval",x,y,rx:55*M,ry:36*M,a:ang,track:true});
+      rect("pitch",60,10,70,40,true);break;
+    }
+    case "Hospital":{
+      add(-30,0,14,64);add(30,0,14,64);add(0,0,46,14);circ("pad",80,-30,11);rect("pave",80,30,60,40);break;
+    }
+    case "Mansion":{
+      rect("lawn",0,0,130,100);box("wall",68,54);add(0,-10,44,30);rect("pool",0,30,22,10,true);add(45,30,14,12);break;
+    }
+    case "Monastery":{
+      rect("yard",0,0,90,90);box("wall",48,48);add(0,-40,80,12);add(-40,0,12,70);add(40,0,12,70);add(0,10,22,40);break;
+    }
+    case "Ruins":{
+      for(let i=0;i<14;i++){const u=(r()-0.5)*220,v=(r()-0.5)*160;add(u,v,6+r()*14,5+r()*10);}
+      line("wall",[[-90,-60],[-20,-70],[30,-55]]);line("wall",[[60,20],[80,70]]);break;
+    }
+    case "Lumber Mill":{
+      add(-20,0,60,24);add(50,-30,30,16);rect("pave",0,0,170,110);
+      for(let i=0;i<6;i++)rect("logs",-60+(i%3)*30,35+Math.floor(i/3)*16,22,8);break;
+    }
+    case "Radio Station":case "Observatory":{
+      if(c.kind==="Observatory"){circ("dome",0,0,13);add(30,10,24,14);}
+      else{circ("mast",0,0,5);add(25,10,18,10);add(-20,18,12,8);}
+      box("fence",45,35);break;
+    }
+    case "Farm":{add(0,0,34,18);add(30,22,14,10);circ("silo",-28,-14,5);circ("silo",-28,0,5);break;}
+  }
 }

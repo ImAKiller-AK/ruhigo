@@ -63,7 +63,9 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   literal 2 or 40,000; `GW`/`GH`/`GN` change with the kind (call `setKind()` after changing `P.kind`/`P.km`).
 - `W0` (per world): `kind`, `cities`, river `buckets`, analysis fields `f` (`hm` elevation, `bio`, `isR`, `acc`,
   `recv`…), `routes` (cell paths), `costField`, `net` (drawable road polylines, `km`, `bridges`). Battle maps
-  add `bld` (buildings as x, y, w, h, angle ×5 in world units) and `streets` (x1, y1, x2, y2 ×4); their
+  add `bld` (buildings as x, y, w, h, angle ×5 in world units), `streets` (x1, y1, x2, y2 ×4), `deco`
+  (landmark ground marks from `siteLayout`), `farms` (farmstead cells), `ring` (ring-road cell paths) and
+  `tracks` (dirt-track polylines, built after the roads by `trackTask`); their
   `cities` carry `cls` (city/town/village/site), `kind` ("Town", "Quarry"…), `r` (radius m) and `pop`
   (number of buildings). Battle-map roads are built in the Generation tab by `regenerate`.
 - Links: `#seed` is a planet, `#seed@a8.snow.island` a battle map (size, theme, layout). The history engine
@@ -86,7 +88,10 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   sizes 4/6/8 km, about 2.6 named places per km of width, relief organised in regions (one or two blocks
   of low, rounded, browner hills (about 220 m at most by default); broad, gently rolling lowland with a few irregular lakes; ragged coasts),
   never aggressive, and shaded softly so the map reads as brightly lit, one or two broad rivers crossing many maps so roads need bridges, farmsteads scattered
-  over open country. No faction simulation and no Minecraft export on battle maps: the owner wants them as
+  over open country and joined to the roads by dirt tracks, a ring road a few hundred metres in from the
+  shore or map edge, and compounds drawn with their own silhouettes (runway and hangars, stadium bowl,
+  cooling towers, quarry terraces, piers, prison walls, tank farms, rail sidings…); every map of 6 km or
+  more has a military base in its most remote compound; harbours only beside the sea or a big lake. No faction simulation and no Minecraft export on battle maps: the owner wants them as
   pure design, as close as possible to the look of battle-royale maps.
 - Battle-map look ("Aerial" layer): an aerial-photo style, not flat biome colours. Muted ground per climate,
   woods built from single crowns (clumps, glades, frayed edges and lone trees, never flat patches), farmland parcels, bare rock on steep slopes, turquoise shallows and slate deep water, texture laid
@@ -115,8 +120,9 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   without war, no faction above 36%. The default seed (`ember-4`) has 11 wars and 5 pacts.
 - The Minecraft export has been checked with `tools/verify_mcworld.py` but never opened inside Minecraft.
 - The page has been tested in desktop and phone-sized Chrome, not on a real phone.
-- Battle maps have been compared by eye with reference maps on desktop and phone-sized Chrome; dirt tracks
-  between farmsteads and a ring road are ideas not yet done.
+- Battle maps have been compared by eye with reference maps on desktop and phone-sized Chrome. Ideas not
+  yet done: towns that grow organically along roads, varied coasts (cliffs and rocks), narrower rivers,
+  a drawn play-zone border, coloured roofs.
 
 ## Publishing
 
