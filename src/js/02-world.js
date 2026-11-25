@@ -70,20 +70,22 @@ const arenaSea=()=>0.04+(P.sea-0.04)*0.35;               // the sea slider moves
 const arenaTop=()=>140+520*(P.rough-0.38)/0.26;           // highest hills, from the ruggedness slider (140–660 m)
 function elevArena(x,y,oct){
   const S=noiseScale(),g=P.rough;
-  const wx=fbm(N.w1,x*S*0.7,y*S*0.7,3,0.5),wy=fbm(N.w2,x*S*0.7+7.1,y*S*0.7+3.7,3,0.5);
-  const px=x*S+wx*0.45,py=y*S+wy*0.45;
+  const wx=fbm(N.w1,x*S*0.6,y*S*0.6,3,0.5),wy=fbm(N.w2,x*S*0.6+7.1,y*S*0.6+3.7,3,0.5);
+  const px=x*S+wx*0.35,py=y*S+wy*0.35;
+  // regions, as on real battle maps: one or two blocks of highland, and broad, gently rolling lowland elsewhere
+  const hl=smooth(0.05,0.5,N.k(x*1.1+3.3,y*1.1)+0.22*N.r(x*2.4,y*2.4));
   // battle ground is smooth up close: past the fourth octave each finer one fades fast, and detail stops at about 2 m
   let s=0,a=1,f=1,t=0;const o=oct<12?oct:12;
   for(let i=0;i<o;i++){const X=i<3?px:x*S,Y=i<3?py:y*S;s+=a*N.e(X*f+i*19.19,Y*f-i*7.73);t+=a;a*=i<3?g:g*0.5;f*=2.02;}
-  let e=0.075+0.17*(s/t)+0.05*N.c(x*1.4,y*1.4);
-  const m=smooth(0.1,0.55,N.k(x*1.5+3.3,y*1.5)); // one or two blocks of high ground
-  if(m>0){
-    let r=0;a=1;f=1.4;t=0;const ro=oct<7?oct:7;
-    for(let i=0;i<ro;i++){const X=i<2?px:x*S,Y=i<2?py:y*S;let v=1-Math.abs(N.r(X*f+i*3.1,Y*f-i*1.7));v*=v;r+=v*a;t+=a;a*=0.5;f*=2.1;}
-    e+=m*(r/t)*0.24;
+  let e=0.085+(0.04+0.17*hl)*(s/t)+0.03*N.c(x*1.4,y*1.4)+0.09*hl;
+  if(hl>0){ // rounded crests in the highland, never knife-edged
+    let r=0;a=1;f=1.3;t=0;const ro=oct<5?oct:5;
+    for(let i=0;i<ro;i++){const X=i<2?px:x*S,Y=i<2?py:y*S;r+=(1-Math.abs(N.r(X*f+i*3.1,Y*f-i*1.7)))*a;t+=a;a*=0.5;f*=2.1;}
+    e+=hl*(r/t-0.5)*0.08;
   }
+  e-=0.1*smooth(0.48,0.7,N.c(x*3.1+11+wx*0.9,y*3.1-4+wy*0.9)+0.12*N.t(x*9,y*9))*(1-hl); // a few lowland lakes of irregular shape
   // layout: how much of the map is playable land and where the sea comes in
-  const edge=fbm(N.c,x*2.4+9.2,y*2.4,4,0.55)*0.11;
+  const edge=fbm(N.c,x*2.2+9.2+wx*0.5,y*2.2+wy*0.5,5,0.6)*0.22; // ragged shores: bays, capes and offshore islets
   if(P.layout==="island"){const dx=(x-0.5)*2,dy=(y-0.5)*2;e-=0.5*smooth(0.86,1.1,Math.pow(dx**4+dy**4,0.25)+edge);}
   else if(P.layout==="coast"){const c=Math.cos(N.side),sn=Math.sin(N.side),d=(x-0.5)*c+(y-0.5)*sn;e-=0.5*smooth(0.24,0.5,d+edge);}
   else e+=0.035;

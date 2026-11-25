@@ -25,7 +25,7 @@ function makeJob(scale){
   const W=Math.max(8,Math.round(cssW*scale)),H=Math.max(4,Math.round(cssH*W/cssW)),U=unit()*cssW/W;
   const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*noiseScale())))+1));
   const cv=document.createElement("canvas");cv.width=W;cv.height=H;
-  return {W,H,U,oct,cx:view.cx,cy:view.cy,E:(isArena()?1.5:9)/Math.pow(view.zoom,0.08),
+  return {W,H,U,oct,cx:view.cx,cy:view.cy,E:(isArena()?1.1:9)/Math.pow(view.zoom,0.08),
     hs:new Float32Array(W*H),ts:new Float32Array(W*H),rs:new Float32Array(W*H),img:new ImageData(W,H),cv,cx2:cv.getContext("2d"),row:0,shaded:0,put:0};
 }
 function computeRow(j,py){
@@ -55,8 +55,9 @@ function shadeRow(j,py){
     if(ar&&mode==="biome"){ // battle maps: an aerial-photo look instead of flat biome colours
       const s0=Math.hypot(hR-hL,hD-hU)/(2*mpp);
       aerial(j.cx+(px+0.5-W/2)*j.U,j.cy+(py+0.5-H/2)*j.U,h,R,s0,top);
-      f=1+(f-1)*(sea?0.25:snow?0.8:0.62);
-      if(snow&&!sea&&f<1){col[2]+=(1-f)*40;} // snow in shadow turns blue
+      // soft, daylit shading: the relief is there but quiet, and the whole map is lifted a little
+      f=(1+(f-1)*(sea?0.2:snow?0.55:0.4))*(sea?1.04:1.1);
+      if(snow&&!sea&&f<1.1){col[2]+=(1.1-f)*40;} // snow in shadow turns blue
       const r=col[0]*f,gg=col[1]*f,b=col[2]*f;
       d[o]=r>255?255:r;d[o+1]=gg>255?255:gg;d[o+2]=b>255?255:b;continue;
     }
@@ -254,10 +255,10 @@ function arenaLabels(sx,sy){
 // holds still while panning): patches of ~150 m, clumps of ~35 m, tree crowns of ~12 m and a fine grain of ~4 m.
 // Farmland appears as parcels on low, gentle ground where a slow noise allows it.
 const AERIAL={
-  temperate:{open:[96,104,66],dry:[134,128,90],forest:[44,58,36],rock:[116,108,94],beach:[180,166,132],field:[[118,126,70],[150,140,86],[112,96,68],[96,112,62]],farm:0.55},
-  snow:{open:[222,226,231],dry:[200,205,211],forest:[62,74,68],rock:[100,100,103],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:0.25},
-  desert:{open:[150,118,84],dry:[182,150,106],forest:[106,98,64],rock:[106,80,60],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:0.35},
-  jungle:{open:[82,106,54],dry:[126,116,74],forest:[36,62,32],rock:[108,98,82],beach:[182,168,130],field:[[110,126,60],[136,130,78],[92,116,52]],farm:0.45}
+  temperate:{open:[104,114,70],dry:[140,134,94],forest:[50,66,40],rock:[116,108,94],beach:[180,166,132],field:[[118,126,70],[150,140,86],[112,96,68],[96,112,62]],farm:0.62},
+  snow:{open:[222,226,231],dry:[200,205,211],forest:[62,74,68],rock:[100,100,103],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:0.75},
+  desert:{open:[150,118,84],dry:[182,150,106],forest:[106,98,64],rock:[106,80,60],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:0.5},
+  jungle:{open:[88,114,58],dry:[130,120,78],forest:[42,70,36],rock:[108,98,82],beach:[182,168,130],field:[[110,126,60],[136,130,78],[92,116,52]],farm:0.58}
 };
 const mixc=(c,t)=>{col[0]+=(c[0]-col[0])*t;col[1]+=(c[1]-col[1])*t;col[2]+=(c[2]-col[2])*t;};
 const hash2=(a,b)=>{let h=Math.imul(a,374761393)^Math.imul(b,668265263);h=Math.imul(h^h>>>13,1274126177);return ((h^h>>>16)>>>0)/4294967296;};
@@ -272,8 +273,8 @@ function aerial(wx,wy,h,R,sl,top){
   const p1=N.t(mx/160+31,my/160),p2=N.t(mx/38-17,my/38+5),p3=N.t(mx/12+3,my/12-9);
   // open ground, drier where the clumps say so, then forest where it is wet enough
   col[0]=th.open[0];col[1]=th.open[1];col[2]=th.open[2];
-  mixc(th.dry,Math.max(0,Math.min(1,0.45+0.7*p2-0.5*m+0.3*p1)));
-  let fo=smooth(0.42,0.66,m+0.28*p1+0.12*p2);
+  mixc(th.dry,Math.max(0,Math.min(1,0.45+0.7*p2-0.5*m+0.3*p1+0.9*smooth(top*0.2,top*0.65,h)))); // highland turns brown and dry
+  let fo=smooth(0.42,0.66,m+0.28*p1+0.12*p2-0.35*smooth(top*0.3,top*0.75,h));
   if(P.theme==="desert")fo*=0.45;else if(P.theme==="snow")fo*=smooth(0.55,0.8,m+0.2*p1);
   // farmland: parcels of 70–160 m with thin darker margins, never on slopes or high ground
   const fm=smooth(th.farm,th.farm+0.18,N.c(mx/1400+4.1,my/1400))*smooth(0.12,0.05,sl)*smooth(top*0.45,top*0.2,h);

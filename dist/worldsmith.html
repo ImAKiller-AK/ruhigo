@@ -395,20 +395,22 @@ const arenaSea=()=>0.04+(P.sea-0.04)*0.35;               // the sea slider moves
 const arenaTop=()=>140+520*(P.rough-0.38)/0.26;           // highest hills, from the ruggedness slider (140–660 m)
 function elevArena(x,y,oct){
   const S=noiseScale(),g=P.rough;
-  const wx=fbm(N.w1,x*S*0.7,y*S*0.7,3,0.5),wy=fbm(N.w2,x*S*0.7+7.1,y*S*0.7+3.7,3,0.5);
-  const px=x*S+wx*0.45,py=y*S+wy*0.45;
+  const wx=fbm(N.w1,x*S*0.6,y*S*0.6,3,0.5),wy=fbm(N.w2,x*S*0.6+7.1,y*S*0.6+3.7,3,0.5);
+  const px=x*S+wx*0.35,py=y*S+wy*0.35;
+  // regions, as on real battle maps: one or two blocks of highland, and broad, gently rolling lowland elsewhere
+  const hl=smooth(0.05,0.5,N.k(x*1.1+3.3,y*1.1)+0.22*N.r(x*2.4,y*2.4));
   // battle ground is smooth up close: past the fourth octave each finer one fades fast, and detail stops at about 2 m
   let s=0,a=1,f=1,t=0;const o=oct<12?oct:12;
   for(let i=0;i<o;i++){const X=i<3?px:x*S,Y=i<3?py:y*S;s+=a*N.e(X*f+i*19.19,Y*f-i*7.73);t+=a;a*=i<3?g:g*0.5;f*=2.02;}
-  let e=0.075+0.17*(s/t)+0.05*N.c(x*1.4,y*1.4);
-  const m=smooth(0.1,0.55,N.k(x*1.5+3.3,y*1.5)); // one or two blocks of high ground
-  if(m>0){
-    let r=0;a=1;f=1.4;t=0;const ro=oct<7?oct:7;
-    for(let i=0;i<ro;i++){const X=i<2?px:x*S,Y=i<2?py:y*S;let v=1-Math.abs(N.r(X*f+i*3.1,Y*f-i*1.7));v*=v;r+=v*a;t+=a;a*=0.5;f*=2.1;}
-    e+=m*(r/t)*0.24;
+  let e=0.085+(0.04+0.17*hl)*(s/t)+0.03*N.c(x*1.4,y*1.4)+0.09*hl;
+  if(hl>0){ // rounded crests in the highland, never knife-edged
+    let r=0;a=1;f=1.3;t=0;const ro=oct<5?oct:5;
+    for(let i=0;i<ro;i++){const X=i<2?px:x*S,Y=i<2?py:y*S;r+=(1-Math.abs(N.r(X*f+i*3.1,Y*f-i*1.7)))*a;t+=a;a*=0.5;f*=2.1;}
+    e+=hl*(r/t-0.5)*0.08;
   }
+  e-=0.1*smooth(0.48,0.7,N.c(x*3.1+11+wx*0.9,y*3.1-4+wy*0.9)+0.12*N.t(x*9,y*9))*(1-hl); // a few lowland lakes of irregular shape
   // layout: how much of the map is playable land and where the sea comes in
-  const edge=fbm(N.c,x*2.4+9.2,y*2.4,4,0.55)*0.11;
+  const edge=fbm(N.c,x*2.2+9.2+wx*0.5,y*2.2+wy*0.5,5,0.6)*0.22; // ragged shores: bays, capes and offshore islets
   if(P.layout==="island"){const dx=(x-0.5)*2,dy=(y-0.5)*2;e-=0.5*smooth(0.86,1.1,Math.pow(dx**4+dy**4,0.25)+edge);}
   else if(P.layout==="coast"){const c=Math.cos(N.side),sn=Math.sin(N.side),d=(x-0.5)*c+(y-0.5)*sn;e-=0.5*smooth(0.24,0.5,d+edge);}
   else e+=0.035;
@@ -1708,7 +1710,7 @@ function makeJob(scale){
   const W=Math.max(8,Math.round(cssW*scale)),H=Math.max(4,Math.round(cssH*W/cssW)),U=unit()*cssW/W;
   const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*noiseScale())))+1));
   const cv=document.createElement("canvas");cv.width=W;cv.height=H;
-  return {W,H,U,oct,cx:view.cx,cy:view.cy,E:(isArena()?1.5:9)/Math.pow(view.zoom,0.08),
+  return {W,H,U,oct,cx:view.cx,cy:view.cy,E:(isArena()?1.1:9)/Math.pow(view.zoom,0.08),
     hs:new Float32Array(W*H),ts:new Float32Array(W*H),rs:new Float32Array(W*H),img:new ImageData(W,H),cv,cx2:cv.getContext("2d"),row:0,shaded:0,put:0};
 }
 function computeRow(j,py){
@@ -1738,8 +1740,9 @@ function shadeRow(j,py){
     if(ar&&mode==="biome"){ // battle maps: an aerial-photo look instead of flat biome colours
       const s0=Math.hypot(hR-hL,hD-hU)/(2*mpp);
       aerial(j.cx+(px+0.5-W/2)*j.U,j.cy+(py+0.5-H/2)*j.U,h,R,s0,top);
-      f=1+(f-1)*(sea?0.25:snow?0.8:0.62);
-      if(snow&&!sea&&f<1){col[2]+=(1-f)*40;} // snow in shadow turns blue
+      // soft, daylit shading: the relief is there but quiet, and the whole map is lifted a little
+      f=(1+(f-1)*(sea?0.2:snow?0.55:0.4))*(sea?1.04:1.1);
+      if(snow&&!sea&&f<1.1){col[2]+=(1.1-f)*40;} // snow in shadow turns blue
       const r=col[0]*f,gg=col[1]*f,b=col[2]*f;
       d[o]=r>255?255:r;d[o+1]=gg>255?255:gg;d[o+2]=b>255?255:b;continue;
     }
@@ -1937,10 +1940,10 @@ function arenaLabels(sx,sy){
 // holds still while panning): patches of ~150 m, clumps of ~35 m, tree crowns of ~12 m and a fine grain of ~4 m.
 // Farmland appears as parcels on low, gentle ground where a slow noise allows it.
 const AERIAL={
-  temperate:{open:[96,104,66],dry:[134,128,90],forest:[44,58,36],rock:[116,108,94],beach:[180,166,132],field:[[118,126,70],[150,140,86],[112,96,68],[96,112,62]],farm:0.55},
-  snow:{open:[222,226,231],dry:[200,205,211],forest:[62,74,68],rock:[100,100,103],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:0.25},
-  desert:{open:[150,118,84],dry:[182,150,106],forest:[106,98,64],rock:[106,80,60],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:0.35},
-  jungle:{open:[82,106,54],dry:[126,116,74],forest:[36,62,32],rock:[108,98,82],beach:[182,168,130],field:[[110,126,60],[136,130,78],[92,116,52]],farm:0.45}
+  temperate:{open:[104,114,70],dry:[140,134,94],forest:[50,66,40],rock:[116,108,94],beach:[180,166,132],field:[[118,126,70],[150,140,86],[112,96,68],[96,112,62]],farm:0.62},
+  snow:{open:[222,226,231],dry:[200,205,211],forest:[62,74,68],rock:[100,100,103],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:0.75},
+  desert:{open:[150,118,84],dry:[182,150,106],forest:[106,98,64],rock:[106,80,60],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:0.5},
+  jungle:{open:[88,114,58],dry:[130,120,78],forest:[42,70,36],rock:[108,98,82],beach:[182,168,130],field:[[110,126,60],[136,130,78],[92,116,52]],farm:0.58}
 };
 const mixc=(c,t)=>{col[0]+=(c[0]-col[0])*t;col[1]+=(c[1]-col[1])*t;col[2]+=(c[2]-col[2])*t;};
 const hash2=(a,b)=>{let h=Math.imul(a,374761393)^Math.imul(b,668265263);h=Math.imul(h^h>>>13,1274126177);return ((h^h>>>16)>>>0)/4294967296;};
@@ -1955,8 +1958,8 @@ function aerial(wx,wy,h,R,sl,top){
   const p1=N.t(mx/160+31,my/160),p2=N.t(mx/38-17,my/38+5),p3=N.t(mx/12+3,my/12-9);
   // open ground, drier where the clumps say so, then forest where it is wet enough
   col[0]=th.open[0];col[1]=th.open[1];col[2]=th.open[2];
-  mixc(th.dry,Math.max(0,Math.min(1,0.45+0.7*p2-0.5*m+0.3*p1)));
-  let fo=smooth(0.42,0.66,m+0.28*p1+0.12*p2);
+  mixc(th.dry,Math.max(0,Math.min(1,0.45+0.7*p2-0.5*m+0.3*p1+0.9*smooth(top*0.2,top*0.65,h)))); // highland turns brown and dry
+  let fo=smooth(0.42,0.66,m+0.28*p1+0.12*p2-0.35*smooth(top*0.3,top*0.75,h));
   if(P.theme==="desert")fo*=0.45;else if(P.theme==="snow")fo*=smooth(0.55,0.8,m+0.2*p1);
   // farmland: parcels of 70–160 m with thin darker margins, never on slopes or high ground
   const fm=smooth(th.farm,th.farm+0.18,N.c(mx/1400+4.1,my/1400))*smooth(0.12,0.05,sl)*smooth(top*0.45,top*0.2,h);
