@@ -98,7 +98,7 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   play-zone line just inside the map edge with hatching outside. No faction simulation and no Minecraft export on battle maps: the owner wants them as
   pure design, as close as possible to the look of battle-royale maps.
 - Battle-map look ("Aerial" layer): an aerial-photo style, not flat biome colours. Muted ground per climate,
-  woods built from single crowns (clumps, glades, frayed edges and lone trees, never flat patches), farmland parcels, bare rock on steep slopes, turquoise shallows and slate deep water, texture laid
+  woods shaded continuously from a regional density (soft dark mottling from afar, fading through scrub into open ground; sunlit crowns only once they are a few pixels wide, so nothing looks splattered), patches of brown bare earth, farmland parcels, bare rock on steep slopes, turquoise shallows and slate deep water, texture laid
   in world space so it holds still while panning; pale roads with a faint shadow, grey bridges, cream
   buildings, white place names with a soft dark halo and no markers. Names and layouts stay original.
 

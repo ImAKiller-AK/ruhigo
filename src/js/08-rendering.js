@@ -54,7 +54,7 @@ function shadeRow(j,py){
     const T=ts[k],R=rs[k];
     if(ar&&mode==="biome"){ // battle maps: an aerial-photo look instead of flat biome colours
       const s0=Math.hypot(hR-hL,hD-hU)/(2*mpp);
-      aerial(j.cx+(px+0.5-W/2)*j.U,j.cy+(py+0.5-H/2)*j.U,h,R,s0,top);
+      aerial(j.cx+(px+0.5-W/2)*j.U,j.cy+(py+0.5-H/2)*j.U,h,R,s0,top,mpp);
       // soft, daylit shading: the relief is there but quiet, and the whole map is lifted a little
       f=(1+(f-1)*(sea?0.2:snow?0.55:0.4))*(sea?1.04:1.1);
       if(snow&&!sea&&f<1.1){col[2]+=(1.1-f)*40;} // snow in shadow turns blue
@@ -264,14 +264,14 @@ function arenaLabels(sx,sy){
 // holds still while panning): patches of ~150 m, clumps of ~35 m, tree crowns of ~12 m and a fine grain of ~4 m.
 // Farmland appears as parcels on low, gentle ground where a slow noise allows it.
 const AERIAL={
-  temperate:{open:[104,114,70],dry:[140,134,94],forest:[50,66,40],rock:[116,108,94],beach:[180,166,132],field:[[118,126,70],[150,140,86],[112,96,68],[96,112,62]],farm:0.62},
-  snow:{open:[222,226,231],dry:[200,205,211],forest:[62,74,68],rock:[100,100,103],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:0.75},
-  desert:{open:[150,118,84],dry:[182,150,106],forest:[106,98,64],rock:[106,80,60],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:0.5},
-  jungle:{open:[88,114,58],dry:[130,120,78],forest:[42,70,36],rock:[108,98,82],beach:[182,168,130],field:[[110,126,60],[136,130,78],[92,116,52]],farm:0.58}
+  temperate:{open:[100,108,68],dry:[134,126,90],soil:[122,100,72],forest:[50,64,40],rock:[116,108,94],beach:[180,166,132],field:[[118,126,70],[150,140,86],[112,96,68],[96,112,62]],farm:0.62},
+  snow:{open:[222,226,231],dry:[200,205,211],soil:[168,160,150],forest:[62,74,68],rock:[100,100,103],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:0.75},
+  desert:{open:[150,118,84],dry:[182,150,106],soil:[126,94,66],forest:[106,98,64],rock:[106,80,60],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:0.5},
+  jungle:{open:[86,108,56],dry:[128,118,78],soil:[124,98,66],forest:[42,68,36],rock:[108,98,82],beach:[182,168,130],field:[[110,126,60],[136,130,78],[92,116,52]],farm:0.58}
 };
 const mixc=(c,t)=>{col[0]+=(c[0]-col[0])*t;col[1]+=(c[1]-col[1])*t;col[2]+=(c[2]-col[2])*t;};
 const hash2=(a,b)=>{let h=Math.imul(a,374761393)^Math.imul(b,668265263);h=Math.imul(h^h>>>13,1274126177);return ((h^h>>>16)>>>0)/4294967296;};
-function aerial(wx,wy,h,R,sl,top){
+function aerial(wx,wy,h,R,sl,top,mpp){
   const th=AERIAL[P.theme]||AERIAL.temperate,mx=wx*MPU,my=wy*MPU; // metres
   if(h<0){ // turquoise over the shallows, slate blue in deep water
     const dd=-h,t1=smooth(0,9,dd),t2=smooth(9,50,dd),w=0.04*N.t(mx/90,my/90);
@@ -284,17 +284,22 @@ function aerial(wx,wy,h,R,sl,top){
   // open ground, drier where the clumps say so, then forest where it is wet enough
   col[0]=th.open[0];col[1]=th.open[1];col[2]=th.open[2];
   mixc(th.dry,Math.max(0,Math.min(1,0.45+0.7*p2-0.5*m+0.3*p1+0.9*smooth(top*0.2,top*0.65,h)))); // highland turns brown and dry
-  // woods are built from trees, not painted as patches: a soft regional density decides how many trees stand
-  // here, and noise at the scale of single crowns (~6 and ~12 m) turns it into clumps, glades and lone trees,
-  // so edges fray out instead of ending in a hard line
+  // bare brown earth: patches of soil of a few hundred metres, more on dry ground and slopes, never one colour
+  const soil=smooth(0.12,0.55,N.k(mx/260+9.4,my/260-2.2)+0.35*p2+0.2*p1-0.35*m+0.6*sl);
+  mixc(th.soil,soil*(0.5+0.25*p3)*(P.theme==="snow"?0.15:1)); // under snow, earth shows only here and there
+  // woods: a regional density shaded continuously, so a wood fades through scrub into open ground instead of
+  // ending in a cut-out edge; single crowns (light tops, dark gaps, ~7 m) only show once they are a few pixels
+  // wide, and from afar a wood reads as soft dark mottling, as on an aerial photo
+  const fine=smooth(7,2.5,mpp);
   let dens=smooth(0.3,0.85,m+0.28*p1+0.12*p2-0.35*smooth(top*0.3,top*0.75,h));
   if(P.theme==="desert")dens*=0.5;else if(P.theme==="snow")dens*=smooth(0.4,0.85,m+0.2*p1);
   const p4=N.e(mx/6.5+7,my/6.5-3);
   let cl=0; // towns and compounds stand in cleared, trodden ground: fewer trees, each still crisp
   if(W0&&W0.kind==="arena")for(const c of W0.cities){const dx=mx-c.x*MPU,dy=my-c.y*MPU,R=c.r*1.2+40;if(dx*dx+dy*dy<R*R)cl=Math.max(cl,smooth(R,c.r*0.75,Math.sqrt(dx*dx+dy*dy)+30*p2));}
-  if(cl>0){dens*=1-cl*0.9;mixc(th.dry,cl*0.3);}
-  let fo=dens>0.02?smooth(-0.12,0.16,dens*1.25-0.62+0.42*p3+0.28*p4+0.12*p2):0;
-  fo=Math.max(fo,smooth(0.62,0.8,p4*0.75+p3*0.35)*(P.theme==="desert"?0.35:0.75)*(1-cl*0.6)); // lone trees dotted over open ground
+  if(cl>0){dens*=1-cl*0.9;mixc(th.soil,cl*0.25);}
+  let fo=Math.max(0,Math.min(1,(dens-0.12)*1.35+0.22*p2+0.18*p3+0.3*p4*fine));
+  fo=fo*fo*(3-2*fo);
+  const scrub=(1-fo)*smooth(0.15,0.75,p3*0.6+p2*0.5+0.3*m)*(P.theme==="desert"?0.25:P.theme==="snow"?0.15:0.38)*(1-cl*0.6); // bushes and lone trees, soft
 
   // farmland: parcels of 70–160 m with thin darker margins, never on slopes or high ground
   const fm=smooth(th.farm,th.farm+0.05,N.c(mx/1400+4.1,my/1400))*smooth(0.12,0.05,sl)*smooth(top*0.45,top*0.2,h);
@@ -303,9 +308,11 @@ function aerial(wx,wy,h,R,sl,top){
     const pick=hash2(ix,iy),fc=th.field[Math.floor(pick*th.field.length)],edge=Math.min(fx,1-fx)*150<3||Math.min(fy,1-fy)*75<3;
     mixc(fc,fm*(edge?0.55:0.92));if(edge)mixc([60,62,44],fm*0.25);fo*=1-fm;
   }
+  if(scrub>0)mixc([th.forest[0]*1.12,th.forest[1]*1.1,th.forest[2]*1.08],scrub*(1-fm));
   if(fo>0){
-    const crown=0.78+0.32*(p4*0.5+0.5);mixc([th.forest[0]*crown,th.forest[1]*crown,th.forest[2]*crown],fo);
-    if(P.theme==="snow")mixc([224,228,232],fo*smooth(0.1,0.6,p4+0.3*p3)*0.55); // snow lying on the crowns
+    const crown=1+fine*0.42*p4+0.1*p3; // sunlit crowns and the shade between them
+    mixc([th.forest[0]*crown,th.forest[1]*crown,th.forest[2]*crown],fo*0.92);
+    if(P.theme==="snow")mixc([224,228,232],fo*(0.1+0.3*fine*smooth(0,0.7,p4))); // snow lying on the crowns
   }
   // bare rock on steep slopes and the highest ground; sand on the beach
   const rk=P.theme==="snow"?0.5:1; // snow clings to all but the steepest ground
@@ -314,7 +321,7 @@ function aerial(wx,wy,h,R,sl,top){
   const rocky=smooth(0.02,0.28,N.c(mx/1100+2.7,my/1100-6.3));
   mixc(th.beach,smooth(9,5,h)*(1-rocky));
   if(rocky>0){const sh=smooth(16,5,h)*rocky;mixc([th.rock[0]*0.72,th.rock[1]*0.72,th.rock[2]*0.74],sh*(0.75+0.25*p3));}
-  const g=1+0.06*p3+0.07*(hash2(Math.floor(mx/4),Math.floor(my/4))-0.5); // grain
+  const g=1+0.05*p3+0.05*fine*(hash2(Math.floor(mx/4),Math.floor(my/4))-0.5); // grain, only where it can be seen
   col[0]*=g;col[1]*=g;col[2]*=g;
 }
 
