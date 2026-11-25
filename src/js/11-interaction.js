@@ -1,5 +1,5 @@
 /* ---------------- Interaction ---------------- */
-function clampView(){view.zoom=Math.min(2500,Math.max(1,view.zoom));view.cx=Math.min(2,Math.max(0,view.cx));view.cy=Math.min(1,Math.max(0,view.cy));}
+function clampView(){view.zoom=Math.min(isArena()?80:2500,Math.max(1,view.zoom));view.cx=Math.min(WX,Math.max(0,view.cx));view.cy=Math.min(1,Math.max(0,view.cy));}
 function zoomAt(mx,my,factor){
   const u=unit(),wx=view.cx+(mx-cssW/2)*u,wy=view.cy+(my-cssH/2)*u;
   view.zoom*=factor;clampView();const u2=unit();
@@ -59,20 +59,28 @@ mapEl.addEventListener("keydown",e=>{
 });
 $("zin").addEventListener("click",()=>zoomAt(cssW/2,cssH/2,2));
 $("zout").addEventListener("click",()=>zoomAt(cssW/2,cssH/2,0.5));
-$("zreset").addEventListener("click",()=>flyTo(1,0.5,1));
+$("zreset").addEventListener("click",()=>flyTo(WX/2,0.5,1));
 
 document.querySelectorAll("#layerSeg button").forEach(b=>b.addEventListener("click",()=>{
   mode=b.dataset.mode;document.querySelectorAll("#layerSeg button").forEach(o=>o.setAttribute("aria-pressed",o===b?"true":"false"));
   updateLegend();
   if(reshade(low)&&full&&reshade(full))compose();else renderNow();
 }));
-[["optRivers","rivers"],["optCities","cities"],["optGrid","grid"],["optBorders","borders"],["optRoutes","routes"],["optRes","res"]].forEach(([id,k])=>$(id).addEventListener("change",e=>{opt[k]=e.target.checked;if(k==="res"||k==="borders")resLegend();compose();}));
+[["optRivers","rivers"],["optCities","cities"],["optRoads","roads"],["optBld","bld"],["optGrid","grid"],["optGridA","grid"],["optBorders","borders"],["optRoutes","routes"],["optRes","res"]].forEach(([id,k])=>$(id).addEventListener("change",e=>{opt[k]=e.target.checked;if(k==="res"||k==="borders")resLegend();compose();}));
 ["sSea","sScale","sRough","sTemp"].forEach(id=>$(id).addEventListener("input",()=>{
   readParams();renderNow();clearTimeout(regenTimer);regenTimer=setTimeout(regenerate,280);
 }));
 $("seedForm").addEventListener("submit",e=>{e.preventDefault();newSeed($("seed").value);});
 $("randomBtn").addEventListener("click",()=>newSeed(randomSeed()));
-addEventListener("hashchange",()=>{const s=location.hash.slice(1);if(s&&s!==P.seed)newSeed(s);});
+addEventListener("hashchange",()=>{
+  if(location.hash===hashFor())return;const s=parseHash(location.hash.slice(1));if(s){applyKind();newSeed(s);}
+});
+document.querySelectorAll("#kindSeg button").forEach(b=>b.addEventListener("click",()=>{
+  if(P.kind===b.dataset.k)return;P.kind=b.dataset.k;applyKind();newSeed(P.seed);
+}));
+[["aSize","km",Number],["aTheme","theme",String],["aLayout","layout",String]].forEach(([id,k,cv])=>$(id).addEventListener("change",e=>{
+  P[k]=cv(e.target.value);applyKind();newSeed(P.seed);
+}));
 
 function resize(){
   const r=mapEl.getBoundingClientRect();cssW=Math.max(50,r.width);cssH=Math.max(50,r.height);dpr=Math.min(2,devicePixelRatio||1);

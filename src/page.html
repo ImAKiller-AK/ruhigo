@@ -47,6 +47,25 @@
       <button type="button" id="randomBtn">New random world</button>
     </section>
 
+    <section data-pane="gen">
+      <div class="label">Map type</div>
+      <div class="seg" id="kindSeg" role="group" aria-label="Map type">
+        <button type="button" data-k="world" aria-pressed="true">Planet</button>
+        <button type="button" data-k="arena" aria-pressed="false">Battle map</button>
+      </div>
+      <div class="fields fields3" data-kind="arena" hidden>
+        <label class="field" for="aSize">Size
+          <select id="aSize"><option value="4">4 × 4 km</option><option value="6">6 × 6 km</option><option value="8">8 × 8 km</option></select>
+        </label>
+        <label class="field" for="aTheme">Climate
+          <select id="aTheme"><option value="temperate">Temperate</option><option value="snow">Snow</option><option value="desert">Desert</option><option value="jungle">Jungle</option></select>
+        </label>
+        <label class="field" for="aLayout">Layout
+          <select id="aLayout"><option value="island">Island</option><option value="coast">Coastal</option><option value="inland">Inland</option></select>
+        </label>
+      </div>
+    </section>
+
     <section>
       <div class="label">Map layers</div>
       <div class="seg" id="layerSeg" role="group" aria-label="Base layer">
@@ -59,7 +78,10 @@
       <div class="chips" role="group" aria-label="Overlays">
         <label><input type="checkbox" id="optRivers" checked>Rivers</label>
         <label><input type="checkbox" id="optCities" checked>Settlements</label>
-        <label><input type="checkbox" id="optGrid" checked>Lat / long</label>
+        <label data-kind="world"><input type="checkbox" id="optGrid" checked>Lat / long</label>
+        <label data-kind="arena" hidden><input type="checkbox" id="optGridA" checked>Grid</label>
+        <label data-kind="arena" hidden><input type="checkbox" id="optRoads" checked>Roads</label>
+        <label data-kind="arena" hidden><input type="checkbox" id="optBld" checked>Buildings</label>
         <label data-pane="sim" hidden><input type="checkbox" id="optBorders" checked>Borders</label>
         <label data-pane="sim" hidden><input type="checkbox" id="optRoutes" checked>Trade routes</label>
         <label data-pane="sim" hidden><input type="checkbox" id="optRes">Resources</label>
@@ -96,7 +118,7 @@
     <section data-pane="gen">
       <div class="label">Shape the world</div>
       <div class="slider"><label for="sSea">Sea level</label><output id="oSea" for="sSea"></output><input type="range" id="sSea" min="-0.25" max="0.3" step="0.01" value="0.04"></div>
-      <div class="slider"><label for="sScale">Landmass size</label><output id="oScale" for="sScale"></output><input type="range" id="sScale" min="0.8" max="3.4" step="0.05" value="2.3"></div>
+      <div class="slider" data-kind="world"><label for="sScale">Landmass size</label><output id="oScale" for="sScale"></output><input type="range" id="sScale" min="0.8" max="3.4" step="0.05" value="2.3"></div>
       <div class="slider"><label for="sRough">Ruggedness</label><output id="oRough" for="sRough"></output><input type="range" id="sRough" min="0.38" max="0.64" step="0.01" value="0.5"></div>
       <div class="slider"><label for="sTemp">Climate shift</label><output id="oTemp" for="sTemp"></output><input type="range" id="sTemp" min="-15" max="15" step="1" value="0"></div>
     </section>

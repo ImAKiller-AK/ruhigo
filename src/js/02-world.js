@@ -1,8 +1,16 @@
 /* ---------------- World model ---------------- */
-// World space: x in [0,2], y in [0,1] (equirectangular). 2 units = 40,000 km.
-const P={seed:"",sea:0.04,scale:1.8,rough:0.5,temp:0};
-let N=null,worldRev=0; // worldRev changes whenever the terrain does, so a running export can tell
-function elev(x,y,oct){
+// Two kinds of map share one model:
+//   "world"  a planet: x in [0,2], y in [0,1] (equirectangular), 2 units = 40,000 km
+//   "arena"  a square battle map P.km kilometres across: x and y in [0,1], with towns, compounds, roads and bridges
+// WX is the map width in world units and MPU the metres in one world unit; setKind() sets both.
+const P={seed:"",sea:0.04,scale:1.8,rough:0.5,temp:0,kind:"world",km:8,theme:"temperate",layout:"island"};
+let N=null,worldRev=0,WX=2,MPU=2e7; // worldRev changes whenever the terrain does, so a running export can tell
+const isArena=()=>P.kind==="arena";
+const noiseScale=()=>isArena()?0.42*P.km:P.scale; // base noise frequency: decides how many octaves a view needs
+function elev(x,y,oct){return isArena()?elevArena(x,y,oct):elevWorld(x,y,oct);}
+function meters(e){return isArena()?metersArena(e):metersWorld(e);}
+function climate(x,y,h,oct){if(isArena())climateArena(x,y,h,oct);else climateWorld(x,y,h,oct);}
+function elevWorld(x,y,oct){
   const S=P.scale;
   const wx=fbm(N.w1,x*S*1.1,y*S*1.1,3,0.5),wy=fbm(N.w2,x*S*1.1+7.1,y*S*1.1+3.7,3,0.5);
   const px=x*S+wx*0.4,py=y*S+wy*0.4,rx=x*S,ry=y*S,g=P.rough;
@@ -22,9 +30,9 @@ function elev(x,y,oct){
   e-=(1-smooth(0,0.16,d))*0.8;
   return e;
 }
-function meters(e){const s=P.sea;if(e>=s){const x=Math.min(1,(e-s)/0.66);return Math.pow(x,2.6)*8400+x*520;}return -Math.pow(Math.min(1,(s-e)/0.55),0.8)*6200;}
+function metersWorld(e){const s=P.sea;if(e>=s){const x=Math.min(1,(e-s)/0.66);return Math.pow(x,2.6)*8400+x*520;}return -Math.pow(Math.min(1,(s-e)/0.55),0.8)*6200;}
 let cT=0,cR=0;
-function climate(x,y,h,oct){
+function climateWorld(x,y,h,oct){
   const lat=Math.abs(y-0.5)*2,mo=Math.max(4,Math.min(9,(oct||8)-3));
   cT=28-60*Math.pow(lat,1.4)+P.temp+4*N.t(x*4,y*4)-6.5*(h>0?h:0)/1000;
   let m=fbm(N.m,x*P.scale*1.4+11,y*P.scale*1.4,mo,0.55)*1.25+0.5;m=m<0?0:m>1?1:m;
@@ -49,3 +57,54 @@ function biome(h,T,R){
   if(R<400)return 11;if(R<1000)return 12;if(R<1900)return 13;return 14;
 }
 
+
+/* ---------------- Arena: a battle map a few kilometres across ---------------- */
+// Same noise, same 18 biomes, but the shape comes from a layout (island, coast or inland), the climate from a theme,
+// and relief is hills of a few hundred metres. Many maps get a broad river channel that roads must bridge.
+const THEMES={ // base temperature °C, rainfall range mm/yr: the biome function turns these into fields, forest, sand or snow
+  temperate:{T:12,R:[420,1350],name:"Temperate"},snow:{T:-7,R:[260,900],name:"Snow"},
+  desert:{T:25,R:[110,820],name:"Desert"},jungle:{T:25,R:[1250,2900],name:"Jungle"}
+};
+const LAYOUTS={island:"Island",coast:"Coastal",inland:"Inland"};
+const arenaSea=()=>0.04+(P.sea-0.04)*0.35;               // the sea slider moves the shore less on a small map
+const arenaTop=()=>140+520*(P.rough-0.38)/0.26;           // highest hills, from the ruggedness slider (140–660 m)
+function elevArena(x,y,oct){
+  const S=noiseScale(),g=P.rough;
+  const wx=fbm(N.w1,x*S*0.7,y*S*0.7,3,0.5),wy=fbm(N.w2,x*S*0.7+7.1,y*S*0.7+3.7,3,0.5);
+  const px=x*S+wx*0.45,py=y*S+wy*0.45;
+  // battle ground is smooth up close: past the fourth octave each finer one fades fast, and detail stops at about 2 m
+  let s=0,a=1,f=1,t=0;const o=oct<12?oct:12;
+  for(let i=0;i<o;i++){const X=i<3?px:x*S,Y=i<3?py:y*S;s+=a*N.e(X*f+i*19.19,Y*f-i*7.73);t+=a;a*=i<3?g:g*0.5;f*=2.02;}
+  let e=0.075+0.17*(s/t)+0.05*N.c(x*1.4,y*1.4);
+  const m=smooth(0.1,0.55,N.k(x*1.5+3.3,y*1.5)); // one or two blocks of high ground
+  if(m>0){
+    let r=0;a=1;f=1.4;t=0;const ro=oct<7?oct:7;
+    for(let i=0;i<ro;i++){const X=i<2?px:x*S,Y=i<2?py:y*S;let v=1-Math.abs(N.r(X*f+i*3.1,Y*f-i*1.7));v*=v;r+=v*a;t+=a;a*=0.5;f*=2.1;}
+    e+=m*(r/t)*0.24;
+  }
+  // layout: how much of the map is playable land and where the sea comes in
+  const edge=fbm(N.c,x*2.4+9.2,y*2.4,4,0.55)*0.11;
+  if(P.layout==="island"){const dx=(x-0.5)*2,dy=(y-0.5)*2;e-=0.5*smooth(0.86,1.1,Math.pow(dx**4+dy**4,0.25)+edge);}
+  else if(P.layout==="coast"){const c=Math.cos(N.side),sn=Math.sin(N.side),d=(x-0.5)*c+(y-0.5)*sn;e-=0.5*smooth(0.24,0.5,d+edge);}
+  else e+=0.035;
+  // one or two broad rivers winding right across the map: the kind of water that forces bridges
+  for(let c=0;c<N.chan;c++){
+    const th=N.side+1.3+c*1.9,ct=Math.cos(th),st=Math.sin(th),u=(x-0.5)*ct+(y-0.5)*st,v=-(x-0.5)*st+(y-0.5)*ct;
+    const mid=(c?-0.18:0.08)+0.16*N.m(u*2.1+c*9.3,4.7)+0.035*N.m(u*6.3,c*5.1+1.9);
+    const q=Math.abs(v-mid),w=c?0.009:0.013;
+    if(q<w*3)e-=0.3*smooth(w*3,w*0.8,q);
+  }
+  return e;
+}
+function metersArena(e){
+  const s=arenaSea();
+  // a narrow beach, then gentle lowland where towns can sit, and hills that steepen only as they rise
+  if(e>=s){const x=Math.min(1,(e-s)/0.3);return 3+10*Math.min(1,x/0.025)+arenaTop()*x*x;}
+  return -Math.pow(Math.min(1,(s-e)/0.2),0.7)*70;
+}
+function climateArena(x,y,h,oct){
+  const th=THEMES[P.theme]||THEMES.temperate,S=noiseScale(),mo=Math.max(4,Math.min(8,(oct||8)-2));
+  cT=th.T+2.5*N.t(x*2.5,y*2.5)+P.temp*0.3-6.5*(h>0?h:0)/1000;
+  let m=fbm(N.m,x*S*1.3+11,y*S*1.3,mo,0.55)*1.35+0.5;m=m<0?0:m>1?1:m;
+  cR=th.R[0]+(th.R[1]-th.R[0])*m;
+}

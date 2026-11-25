@@ -14,10 +14,11 @@ export function loadEngine() {
   globalThis.document ??= { getElementById: () => ({}) };
   const api = `
 return {
-  P, setSeed, analyseWorld, routeTask, simTask, MCX,
+  P, setSeed, setKind, analyseWorld, elev, meters, routeTask, simTask, MCX,
   get W0(){return W0;}, get SIM(){return SIM;}, setSim(v){SIM=v;},
   stateAt, simEconomy, tension, frontAt, warAt, warsAt, pactsAt, alliedAt, routeStatus,
   cityLore, factionLore, routeLore, warLore, pactLore, GN, GW, GH, END_YEAR,
+  get grid(){return {GW,GH,GN,WX,MPU,CELL_M};},
   newRun(){routeGen++;simGen++;return {routeGen,simGen};}
 };`;
   return new Function('"use strict";\n' + code + api)();
@@ -38,4 +39,18 @@ export function buildWorld(seed = "ember-4") {
   for (;;) { r = g.next(); const n = performance.now(); longest = Math.max(longest, n - last); last = n; slices++; if (r.done) break; }
   E.setSim(r.value);
   return { E, S: r.value, ms: { routes: t1 - t0, history: performance.now() - t1, slices, longestSlice: longest } };
+}
+
+// A battle map (see P.kind "arena") with its roads, built synchronously.
+export function buildArena(seed = "ember-4", opts = {}) {
+  const E = loadEngine();
+  Object.assign(E.P, { sea: 0.04, scale: 1.9, rough: 0.5, temp: 0, kind: "arena", km: 8, theme: "temperate", layout: "island" }, opts);
+  E.setKind();
+  E.setSeed(seed);
+  const t0 = performance.now();
+  E.analyseWorld();
+  const t1 = performance.now();
+  const run = E.newRun();
+  for (const t = E.routeTask(run.routeGen, () => {}); !t.next().done;);
+  return { E, W: E.W0, ms: { terrain: t1 - t0, roads: performance.now() - t1 } };
 }

@@ -8,6 +8,7 @@ const simOn=()=>ui.tab==="sim"&&!!SIM;
 const simSay=t=>{$("simMsg").textContent=t;$("simMsg").hidden=!t;};
 
 function setTab(t){
+  if(isArena())t="gen"; // a battle map has no history to simulate
   ui.tab=t;
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t?"true":"false"));
   document.querySelectorAll("[data-pane]").forEach(e=>{e.hidden=e.dataset.pane!==t;});
@@ -291,6 +292,7 @@ function drawSimUnder(sx,sy,u){
   ctx.imageSmoothingEnabled=true;ctx.drawImage(SIM.terr,sx(0),sy(0),2/u,1/u);
 }
 function drawSimRoutes(sx,sy){
+  if(W0&&W0.kind==="arena"){drawArenaRoads(sx,sy);return;}
   if(ui.tab!=="sim"||!W0)return;
   const S=SIM,net=S?S.net:W0.net,zf=Math.pow(view.zoom,0.3);
   const trace=list=>{ctx.beginPath();for(const s of list){ctx.moveTo(sx(s[0]),sy(s[1]));for(let q=2;q<s.length;q+=2)ctx.lineTo(sx(s[q]),sy(s[q+1]));}ctx.stroke();};
@@ -368,3 +370,19 @@ $("tSpeed").addEventListener("click",()=>{if(!SIM)return;SIM.speed=SIM.speed===1
 $("tYear").addEventListener("input",e=>{if(!SIM)return;setYear(+e.target.value);compose();});
 $("tPlay").innerHTML=ICON_PLAY;
 
+
+// battle map roads: cased like the planet's trade roads but quieter, with bridges drawn as grey decks over the water
+function drawArenaRoads(sx,sy){
+  const net=W0.net;if(!opt.roads||!net)return;
+  const zf=Math.pow(view.zoom,0.45),ws=[1,1.3,1.8,2.4];
+  const trace=list=>{ctx.beginPath();for(const s of list){ctx.moveTo(sx(s[0]),sy(s[1]));for(let q=2;q<s.length;q+=2)ctx.lineTo(sx(s[q]),sy(s[q+1]));}ctx.stroke();};
+  if(view.zoom>=2.2){ // town streets, once there is room for them
+    const st=W0.streets,lw=Math.min(9,0.9*zf);ctx.beginPath();
+    for(let q=0;q<st.length;q+=4){ctx.moveTo(sx(st[q]),sy(st[q+1]));ctx.lineTo(sx(st[q+2]),sy(st[q+3]));}
+    ctx.strokeStyle="rgba(10,16,22,.5)";ctx.lineWidth=lw+1.4;ctx.stroke();ctx.strokeStyle="#c9c2ae";ctx.lineWidth=lw;ctx.stroke();
+  }
+  ctx.strokeStyle="rgba(10,16,22,.6)";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*zf)+1.6;trace(net.land[b]);}
+  ctx.lineWidth=Math.min(14,2.6*zf)+2.4;trace(net.sea);
+  ctx.strokeStyle="#d9d2bf";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*zf);trace(net.land[b]);}
+  ctx.strokeStyle="#a9b0b8";ctx.lineWidth=Math.min(14,2.6*zf);trace(net.sea);
+}

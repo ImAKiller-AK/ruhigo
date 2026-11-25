@@ -4,8 +4,8 @@ const BG=[12,20,28],BGCSS="rgb(12,20,28)";
 let cssW=800,cssH=500,dpr=1;
 const view={cx:1,cy:0.5,zoom:1};
 let mode="biome";
-const opt={rivers:true,cities:true,grid:true,borders:true,routes:true,res:false};
-const unit=()=>Math.max(2/cssW,1/cssH)/view.zoom; // world units per CSS px
+const opt={rivers:true,cities:true,grid:true,borders:true,routes:true,res:false,roads:true,bld:true};
+const unit=()=>Math.max(WX/cssW,1/cssH)/view.zoom; // world units per CSS px
 
 const RAMPS={
   oceanB:[[-6200,16,42,72],[-3000,26,64,104],[-1200,40,92,132],[-150,72,134,170],[0,100,162,188]],
@@ -23,21 +23,21 @@ function ramp(st,v){
 }
 function makeJob(scale){
   const W=Math.max(8,Math.round(cssW*scale)),H=Math.max(4,Math.round(cssH*W/cssW)),U=unit()*cssW/W;
-  const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*P.scale)))+1));
+  const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*noiseScale())))+1));
   const cv=document.createElement("canvas");cv.width=W;cv.height=H;
-  return {W,H,U,oct,cx:view.cx,cy:view.cy,E:9/Math.pow(view.zoom,0.08),
+  return {W,H,U,oct,cx:view.cx,cy:view.cy,E:(isArena()?1.5:9)/Math.pow(view.zoom,0.08),
     hs:new Float32Array(W*H),ts:new Float32Array(W*H),rs:new Float32Array(W*H),img:new ImageData(W,H),cv,cx2:cv.getContext("2d"),row:0,shaded:0,put:0};
 }
 function computeRow(j,py){
   const {W,H,U,hs,ts,rs,oct}=j,wy=j.cy+(py+0.5-H/2)*U;
   for(let px=0;px<W;px++){
     const k=py*W+px,wx=j.cx+(px+0.5-W/2)*U;
-    if(wx<0||wx>2||wy<0||wy>1){hs[k]=NaN;continue;}
+    if(wx<0||wx>WX||wy<0||wy>1){hs[k]=NaN;continue;}
     const h=meters(elev(wx,wy,oct));hs[k]=h;climate(wx,wy,h,oct);ts[k]=cT;rs[k]=cR;
   }
 }
 function shadeRow(j,py){
-  const {W,H,hs,ts,rs,E}=j,d=j.img.data,mpp=j.U*2e7;
+  const {W,H,hs,ts,rs,E}=j,d=j.img.data,mpp=j.U*MPU,ar=isArena(),snow=ar&&P.theme==="snow",top=ar?arenaTop():0;
   const Lx=-0.58,Ly=-0.58,Lz=0.57;
   for(let px=0;px<W;px++){
     const k=py*W+px,o=k*4,h=hs[k];d[o+3]=255;
@@ -45,7 +45,7 @@ function shadeRow(j,py){
     let hL=px>0?hs[k-1]:h,hR=px<W-1?hs[k+1]:h,hU=py>0?hs[k-W]:h,hD=py<H-1?hs[k+W]:h;
     if(hL!==hL)hL=h;if(hR!==hR)hR=h;if(hU!==hU)hU=h;if(hD!==hD)hD=h;
     const sea=h<0,coast=!sea&&(hL<0||hR<0||hU<0||hD<0);
-    const g=v=>v<0?v*0.1:v;
+    const g=v=>v<0?v*(ar?0.4:0.1):v;
     const dzx=(g(hR)-g(hL))/(2*mpp)*E,dzy=(g(hD)-g(hU))/(2*mpp)*E;
     const len=Math.sqrt(dzx*dzx+dzy*dzy+1);
     let f=1+((-dzx*Lx-dzy*Ly+Lz)/len-Lz)*1.7;
@@ -53,9 +53,12 @@ function shadeRow(j,py){
     f=f<0.35?0.35:f>1.55?1.55:f;
     const T=ts[k],R=rs[k];
     if(mode==="biome"){
-      if(sea){if(T<-9){col[0]=212;col[1]=224;col[2]=232;}else ramp(RAMPS.oceanB,h);}
-      else{const c=B[biome(h,T,R)][1];const lift=1+Math.min(h,3500)/3500*0.1;col[0]=c[0]*lift;col[1]=c[1]*lift;col[2]=c[2]*lift;}
-    }else if(mode==="relief"){ramp(sea?RAMPS.reliefO:RAMPS.reliefL,h);}
+      if(sea){if(T<-9){col[0]=212;col[1]=224;col[2]=232;}else ramp(RAMPS.oceanB,ar?h*45:h);}
+      else{
+        const c=B[biome(h,T,R)][1];const lift=1+Math.min(h,3500)/3500*0.1;col[0]=c[0]*lift;col[1]=c[1]*lift;col[2]=c[2]*lift;
+        if(snow){const w=0.45+0.5*smooth(300,800,R);col[0]+=(236-col[0])*w;col[1]+=(240-col[1])*w;col[2]+=(244-col[2])*w;} // snow lies thinner where it is dry and windswept
+      }
+    }else if(mode==="relief"){ramp(sea?RAMPS.reliefO:RAMPS.reliefL,ar?(sea?h*45:h/top*6200):h);}
     else if(mode==="temp"){ramp(RAMPS.temp,T);if(sea){col[0]*=0.55;col[1]*=0.6;col[2]*=0.68;}}
     else if(mode==="rain"){if(sea){col[0]=26;col[1]=40;col[2]=56;}else ramp(RAMPS.rain,R);}
     else ramp(RAMPS.cost,Math.log2(sea?FRICTION[biome(h,T,R)]:costAt(j.cx+(px+0.5-W/2)*j.U,j.cy+(py+0.5-H/2)*j.U)));
@@ -112,8 +115,9 @@ function drawOverlay(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.lineCap="round";ctx.lineJoin="round";
   // world frame
-  ctx.strokeStyle="rgba(233,227,211,.25)";ctx.lineWidth=1;ctx.strokeRect(sx(0),sy(0),2/u,1/u);
-  if(opt.grid){
+  ctx.strokeStyle="rgba(233,227,211,.25)";ctx.lineWidth=1;ctx.strokeRect(sx(0),sy(0),WX/u,1/u);
+  if(opt.grid&&isArena())drawArenaGrid(sx,sy,u);
+  else if(opt.grid){
     const z=view.zoom,step=z<2.5?30:z<7?10:z<20?5:z<80?1:z<400?0.25:0.05;
     ctx.strokeStyle="rgba(233,227,211,.13)";ctx.lineWidth=1;ctx.beginPath();
     ctx.font="500 10px 'JetBrains Mono', monospace";ctx.fillStyle="rgba(233,227,211,.6)";
@@ -140,6 +144,7 @@ function drawOverlay(){
     }
   }
   drawSimRoutes(sx,sy);
+  if(W0&&W0.bld&&opt.bld)drawBuildings(sx,sy,u);
   if(opt.cities&&W0){
     const boxes=[];
     const label=(text,x,y,font,color)=>{
@@ -154,7 +159,8 @@ function drawOverlay(){
       ctx.beginPath();ctx.moveTo(px,py-6);ctx.lineTo(px+5,py+3);ctx.lineTo(px-5,py+3);ctx.closePath();ctx.stroke();ctx.fill();
       label(peakName+" "+fmtInt(pk.h)+" m",px,py,"italic 500 11px Inter, sans-serif","#e9e3d3");
     }
-    W0.cities.forEach((c,i)=>{
+    if(W0.kind==="arena")arenaLabels(sx,sy,label);
+    else W0.cities.forEach((c,i)=>{
       const x=sx(c.x),y=sy(c.y);if(x<-40||x>cssW+40||y<-20||y>cssH+20)return;
       if(!c.cap&&view.zoom<1.6&&i>9)return;
       ctx.lineWidth=2;ctx.strokeStyle="rgba(10,16,22,.9)";
@@ -174,10 +180,50 @@ function drawOverlay(){
 }
 function updateChrome(){
   const z=view.zoom;$("zoomTxt").textContent="×"+(z<10?z.toFixed(1):Math.round(z));
-  const km=unit()*20000,raw=km*110,p=Math.pow(10,Math.floor(Math.log10(raw)));
+  const km=unit()*MPU/1000,raw=km*110,p=Math.pow(10,Math.floor(Math.log10(raw)));
   const nice=raw/p>=5?5*p:raw/p>=2?2*p:p;
   $("scaleBar").style.width=(nice/km).toFixed(1)+"px";
   $("scaleTxt").textContent=nice>=1?fmtInt(nice)+" km":fmtInt(nice*1000)+" m";
   mcInfo();
 }
 
+
+/* ---- battle map overlays ---- */
+// a 1 km grid lettered A, B, C… across and numbered down, the way such maps are read; 100 m lines once zoomed in
+function drawArenaGrid(sx,sy,u){
+  const km=1000/MPU,fine=km/10;
+  const lines=(step,alpha)=>{
+    ctx.strokeStyle="rgba(233,227,211,"+alpha+")";ctx.lineWidth=1;ctx.beginPath();
+    for(let x=0;x<=WX+1e-9;x+=step){const X=sx(x);if(X<-1||X>cssW+1)continue;ctx.moveTo(X,Math.max(0,sy(0)));ctx.lineTo(X,Math.min(cssH,sy(1)));}
+    for(let y=0;y<=1+1e-9;y+=step){const Y=sy(y);if(Y<-1||Y>cssH+1)continue;ctx.moveTo(Math.max(0,sx(0)),Y);ctx.lineTo(Math.min(cssW,sx(WX)),Y);}
+    ctx.stroke();
+  };
+  if(fine/u>14)lines(fine,0.07);
+  lines(km,0.16);
+  ctx.font="500 10px 'JetBrains Mono', monospace";ctx.fillStyle="rgba(233,227,211,.62)";
+  const n=Math.round(P.km),top=Math.max(sy(0),0)+52,left=Math.max(sx(0),0)+6;
+  for(let i=0;i<n;i++){const X=sx((i+0.5)*km);if(X>30&&X<cssW-30&&top<cssH-30)ctx.fillText(String.fromCharCode(65+i),X-3,top);}
+  for(let j=0;j<n;j++){const Y=sy((j+0.5)*km);if(Y>70&&Y<cssH-40)ctx.fillText(String(j+1),left,Y+4);}
+}
+// buildings: pale footprints, drawn as soon as they are a pixel or more across
+function drawBuildings(sx,sy,u){
+  const b=W0.bld,px=12/(u*MPU);if(px<0.6)return;
+  ctx.fillStyle=px<2?"rgba(236,222,170,.85)":"#e9dba6";ctx.strokeStyle="rgba(10,16,22,.75)";ctx.lineWidth=1;
+  const outline=px>=3;ctx.beginPath();
+  for(let q=0;q<b.length;q+=5){
+    const x=sx(b[q]),y=sy(b[q+1]);if(x<-40||x>cssW+40||y<-40||y>cssH+40)continue;
+    const w=Math.max(1,b[q+2]/u),h=Math.max(1,b[q+3]/u),a=b[q+4],c=Math.cos(a)/2,s=Math.sin(a)/2;
+    ctx.moveTo(x-w*c+h*s,y-w*s-h*c);ctx.lineTo(x+w*c+h*s,y+w*s-h*c);ctx.lineTo(x+w*c-h*s,y+w*s+h*c);ctx.lineTo(x-w*c-h*s,y-w*s+h*c);ctx.closePath();
+  }
+  ctx.fill();if(outline){ctx.strokeStyle="rgba(10,16,22,.5)";ctx.stroke();}
+}
+// place names: cities large, towns and villages plain, compounds smaller; minor names wait for zoom or room
+function arenaLabels(sx,sy,label){
+  const rank={city:0,town:1,site:2,village:3},list=W0.cities.slice().sort((a,b)=>rank[a.cls]-rank[b.cls]);
+  for(const c of list){
+    const x=sx(c.x),y=sy(c.y);if(x<-60||x>cssW+60||y<-20||y>cssH+20)continue;
+    const font=c.cls==="city"?"700 15px":c.cls==="town"?"600 13px":c.cls==="site"?"500 11px":"500 12px";
+    ctx.font=font+" Inter, sans-serif";const w=ctx.measureText(c.name).width; // label() starts text 8 px right of x
+    label(c.name,x-w/2-8,y,font+" Inter, sans-serif",c.cls==="city"?"#f1c877":c.cls==="site"?"#cfd8e3":"#e9e3d3");
+  }
+}

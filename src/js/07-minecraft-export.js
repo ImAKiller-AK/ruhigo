@@ -103,7 +103,7 @@ const MCX=(()=>{
   // o: {W,H (blocks, multiples of 32), x0,y0,span (world rectangle; span is its width), name, progress(f,msg), cancelled()}
   async function build(o){
     const W=o.W,H=o.H,U=o.span/W,nCol=W*H,CW=W>>4,CH=H>>4,hs=seedHash(P.seed);
-    const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*P.scale)))-1)); // finest detail about four blocks wide
+    const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*noiseScale())))-1)); // finest detail about four blocks wide
     const rnd=(i,j,s)=>{let h=Math.imul(i,374761393)^Math.imul(j,668265263)^Math.imul((s+hs)|0,1274126177);h=Math.imul(h^h>>>13,2246822519);h^=h>>>16;return (h>>>0)/4294967296;};
     let last=performance.now();
     const step=async(f,msg)=>{const n=performance.now();if(n-last<50)return;o.progress(f,msg);await new Promise(r=>setTimeout(r,0));last=performance.now();if(o.cancelled())throw {code:"cancelled"};};
@@ -115,7 +115,7 @@ const MCX=(()=>{
       const wy=o.y0+(j+0.5)*U;
       for(let i=0;i<W;i++){
         const k=j*W+i,wx=o.x0+(i+0.5)*U;let h=-6200,b=0;
-        if(wx>=0&&wx<=2&&wy>=0&&wy<=1){h=meters(elev(wx,wy,oct));climate(wx,wy,h,oct);b=biome(h,cT,cR);}
+        if(wx>=0&&wx<=WX&&wy>=0&&wy<=1){h=meters(elev(wx,wy,oct));climate(wx,wy,h,oct);b=biome(h,cT,cR);}
         g[k]=h<0?-0.001-90*Math.pow(Math.min(1,-h/6200),0.7):250*Math.pow(Math.min(1,h/8920),0.62);
         bio[k]=b;if(b===15)inland[k]=biome(11,cT,cR); // what a low coastal plain becomes away from the water
       }
@@ -152,7 +152,7 @@ const MCX=(()=>{
     // 2. rivers: rasterise the drainage network, then set each channel's water level to its lowest bank
     const wat=new Int16Array(nCol).fill(NONE);
     if(W0){
-      const riv=new Uint8Array(nCol),widths=[0.8,1.1,1.5,2,2.6,3.3],zf=Math.pow(Math.max(1,2/o.span),0.42);
+      const riv=new Uint8Array(nCol),widths=[0.8,1.1,1.5,2,2.6,3.3],zf=Math.pow(Math.max(1,WX/o.span),0.42);
       for(let b=0;b<6;b++){
         const a=W0.buckets[b],wb=Math.max(1,Math.min(7,Math.round(Math.min(14,widths[b]*zf)*W/1100))),r=(wb-1)/2,rr=r*r+0.3,ri=Math.ceil(r);
         for(let q=0;q<a.length;q+=4){

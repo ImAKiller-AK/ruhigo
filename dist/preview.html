@@ -79,12 +79,14 @@ button.primary:hover{filter:brightness(1.08)}
 .cities .meta{display:block;font-size:11.5px;color:var(--muted);font-weight:400}
 .mark{width:8px;height:8px;border-radius:50%;background:var(--fg);justify-self:center}
 .mark.cap{border-radius:1px;background:var(--accent);width:9px;height:9px}
+.mark.site{border-radius:1px;background:#cfd8e3;transform:rotate(45deg);width:7px;height:7px}
 .legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px}
 .legend div{display:flex;align-items:center;gap:7px;min-width:0}
 .ramp{height:12px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
 .rampticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-top:4px}
 .foot{font-size:12px;color:var(--muted)}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fields3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
 select{width:100%;min-width:0;background:var(--field);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:9px 10px;font-family:var(--f-body);font-size:13px}
 select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -93,7 +95,7 @@ button:disabled,select:disabled{opacity:.5;cursor:default}
 .bar i{display:block;height:100%;width:0;background:var(--accent)}
 .note{font-size:12px;color:var(--muted);margin:0}
 /* workspace tabs, overlay chips, contextual inspector, timeline */
-.tabs{position:sticky;top:0;z-index:3;display:grid;grid-template-columns:1fr 1fr;background:var(--panel);border-bottom:1px solid var(--line);margin:-22px 0 -4px;padding-top:10px}
+.tabs{position:sticky;top:0;z-index:3;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--panel);border-bottom:1px solid var(--line);margin:-22px 0 -4px;padding-top:10px}
 .tabs button{border:0;border-radius:0;background:transparent;color:var(--muted);padding:11px 4px 10px;font-family:var(--f-mono);font-weight:500;font-size:11px;letter-spacing:.12em;text-transform:uppercase;border-bottom:2px solid transparent;margin-bottom:-1px}
 .tabs button:hover{color:var(--fg)}
 .tabs button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
@@ -185,6 +187,25 @@ button.lnk{background:none;border:0;padding:0;font:inherit;color:var(--ally);tex
       <button type="button" id="randomBtn">New random world</button>
     </section>
 
+    <section data-pane="gen">
+      <div class="label">Map type</div>
+      <div class="seg" id="kindSeg" role="group" aria-label="Map type">
+        <button type="button" data-k="world" aria-pressed="true">Planet</button>
+        <button type="button" data-k="arena" aria-pressed="false">Battle map</button>
+      </div>
+      <div class="fields fields3" data-kind="arena" hidden>
+        <label class="field" for="aSize">Size
+          <select id="aSize"><option value="4">4 × 4 km</option><option value="6">6 × 6 km</option><option value="8">8 × 8 km</option></select>
+        </label>
+        <label class="field" for="aTheme">Climate
+          <select id="aTheme"><option value="temperate">Temperate</option><option value="snow">Snow</option><option value="desert">Desert</option><option value="jungle">Jungle</option></select>
+        </label>
+        <label class="field" for="aLayout">Layout
+          <select id="aLayout"><option value="island">Island</option><option value="coast">Coastal</option><option value="inland">Inland</option></select>
+        </label>
+      </div>
+    </section>
+
     <section>
       <div class="label">Map layers</div>
       <div class="seg" id="layerSeg" role="group" aria-label="Base layer">
@@ -197,7 +218,10 @@ button.lnk{background:none;border:0;padding:0;font:inherit;color:var(--ally);tex
       <div class="chips" role="group" aria-label="Overlays">
         <label><input type="checkbox" id="optRivers" checked>Rivers</label>
         <label><input type="checkbox" id="optCities" checked>Settlements</label>
-        <label><input type="checkbox" id="optGrid" checked>Lat / long</label>
+        <label data-kind="world"><input type="checkbox" id="optGrid" checked>Lat / long</label>
+        <label data-kind="arena" hidden><input type="checkbox" id="optGridA" checked>Grid</label>
+        <label data-kind="arena" hidden><input type="checkbox" id="optRoads" checked>Roads</label>
+        <label data-kind="arena" hidden><input type="checkbox" id="optBld" checked>Buildings</label>
         <label data-pane="sim" hidden><input type="checkbox" id="optBorders" checked>Borders</label>
         <label data-pane="sim" hidden><input type="checkbox" id="optRoutes" checked>Trade routes</label>
         <label data-pane="sim" hidden><input type="checkbox" id="optRes">Resources</label>
@@ -234,7 +258,7 @@ button.lnk{background:none;border:0;padding:0;font:inherit;color:var(--ally);tex
     <section data-pane="gen">
       <div class="label">Shape the world</div>
       <div class="slider"><label for="sSea">Sea level</label><output id="oSea" for="sSea"></output><input type="range" id="sSea" min="-0.25" max="0.3" step="0.01" value="0.04"></div>
-      <div class="slider"><label for="sScale">Landmass size</label><output id="oScale" for="sScale"></output><input type="range" id="sScale" min="0.8" max="3.4" step="0.05" value="2.3"></div>
+      <div class="slider" data-kind="world"><label for="sScale">Landmass size</label><output id="oScale" for="sScale"></output><input type="range" id="sScale" min="0.8" max="3.4" step="0.05" value="2.3"></div>
       <div class="slider"><label for="sRough">Ruggedness</label><output id="oRough" for="sRough"></output><input type="range" id="sRough" min="0.38" max="0.64" step="0.01" value="0.5"></div>
       <div class="slider"><label for="sTemp">Climate shift</label><output id="oTemp" for="sTemp"></output><input type="range" id="sTemp" min="-15" max="15" step="1" value="0"></div>
     </section>
@@ -304,10 +328,18 @@ function fbm(n,x,y,oct,gain){let a=1,f=1,s=0,t=0;for(let i=0;i<oct;i++){s+=a*n(x
 function smooth(a,b,x){x=(x-a)/(b-a);x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
 
 /* ---------------- World model ---------------- */
-// World space: x in [0,2], y in [0,1] (equirectangular). 2 units = 40,000 km.
-const P={seed:"",sea:0.04,scale:1.8,rough:0.5,temp:0};
-let N=null,worldRev=0; // worldRev changes whenever the terrain does, so a running export can tell
-function elev(x,y,oct){
+// Two kinds of map share one model:
+//   "world"  a planet: x in [0,2], y in [0,1] (equirectangular), 2 units = 40,000 km
+//   "arena"  a square battle map P.km kilometres across: x and y in [0,1], with towns, compounds, roads and bridges
+// WX is the map width in world units and MPU the metres in one world unit; setKind() sets both.
+const P={seed:"",sea:0.04,scale:1.8,rough:0.5,temp:0,kind:"world",km:8,theme:"temperate",layout:"island"};
+let N=null,worldRev=0,WX=2,MPU=2e7; // worldRev changes whenever the terrain does, so a running export can tell
+const isArena=()=>P.kind==="arena";
+const noiseScale=()=>isArena()?0.42*P.km:P.scale; // base noise frequency: decides how many octaves a view needs
+function elev(x,y,oct){return isArena()?elevArena(x,y,oct):elevWorld(x,y,oct);}
+function meters(e){return isArena()?metersArena(e):metersWorld(e);}
+function climate(x,y,h,oct){if(isArena())climateArena(x,y,h,oct);else climateWorld(x,y,h,oct);}
+function elevWorld(x,y,oct){
   const S=P.scale;
   const wx=fbm(N.w1,x*S*1.1,y*S*1.1,3,0.5),wy=fbm(N.w2,x*S*1.1+7.1,y*S*1.1+3.7,3,0.5);
   const px=x*S+wx*0.4,py=y*S+wy*0.4,rx=x*S,ry=y*S,g=P.rough;
@@ -327,9 +359,9 @@ function elev(x,y,oct){
   e-=(1-smooth(0,0.16,d))*0.8;
   return e;
 }
-function meters(e){const s=P.sea;if(e>=s){const x=Math.min(1,(e-s)/0.66);return Math.pow(x,2.6)*8400+x*520;}return -Math.pow(Math.min(1,(s-e)/0.55),0.8)*6200;}
+function metersWorld(e){const s=P.sea;if(e>=s){const x=Math.min(1,(e-s)/0.66);return Math.pow(x,2.6)*8400+x*520;}return -Math.pow(Math.min(1,(s-e)/0.55),0.8)*6200;}
 let cT=0,cR=0;
-function climate(x,y,h,oct){
+function climateWorld(x,y,h,oct){
   const lat=Math.abs(y-0.5)*2,mo=Math.max(4,Math.min(9,(oct||8)-3));
   cT=28-60*Math.pow(lat,1.4)+P.temp+4*N.t(x*4,y*4)-6.5*(h>0?h:0)/1000;
   let m=fbm(N.m,x*P.scale*1.4+11,y*P.scale*1.4,mo,0.55)*1.25+0.5;m=m<0?0:m>1?1:m;
@@ -354,6 +386,57 @@ function biome(h,T,R){
   if(R<400)return 11;if(R<1000)return 12;if(R<1900)return 13;return 14;
 }
 
+
+/* ---------------- Arena: a battle map a few kilometres across ---------------- */
+// Same noise, same 18 biomes, but the shape comes from a layout (island, coast or inland), the climate from a theme,
+// and relief is hills of a few hundred metres. Many maps get a broad river channel that roads must bridge.
+const THEMES={ // base temperature °C, rainfall range mm/yr: the biome function turns these into fields, forest, sand or snow
+  temperate:{T:12,R:[420,1350],name:"Temperate"},snow:{T:-7,R:[260,900],name:"Snow"},
+  desert:{T:25,R:[110,820],name:"Desert"},jungle:{T:25,R:[1250,2900],name:"Jungle"}
+};
+const LAYOUTS={island:"Island",coast:"Coastal",inland:"Inland"};
+const arenaSea=()=>0.04+(P.sea-0.04)*0.35;               // the sea slider moves the shore less on a small map
+const arenaTop=()=>140+520*(P.rough-0.38)/0.26;           // highest hills, from the ruggedness slider (140–660 m)
+function elevArena(x,y,oct){
+  const S=noiseScale(),g=P.rough;
+  const wx=fbm(N.w1,x*S*0.7,y*S*0.7,3,0.5),wy=fbm(N.w2,x*S*0.7+7.1,y*S*0.7+3.7,3,0.5);
+  const px=x*S+wx*0.45,py=y*S+wy*0.45;
+  // battle ground is smooth up close: past the fourth octave each finer one fades fast, and detail stops at about 2 m
+  let s=0,a=1,f=1,t=0;const o=oct<12?oct:12;
+  for(let i=0;i<o;i++){const X=i<3?px:x*S,Y=i<3?py:y*S;s+=a*N.e(X*f+i*19.19,Y*f-i*7.73);t+=a;a*=i<3?g:g*0.5;f*=2.02;}
+  let e=0.075+0.17*(s/t)+0.05*N.c(x*1.4,y*1.4);
+  const m=smooth(0.1,0.55,N.k(x*1.5+3.3,y*1.5)); // one or two blocks of high ground
+  if(m>0){
+    let r=0;a=1;f=1.4;t=0;const ro=oct<7?oct:7;
+    for(let i=0;i<ro;i++){const X=i<2?px:x*S,Y=i<2?py:y*S;let v=1-Math.abs(N.r(X*f+i*3.1,Y*f-i*1.7));v*=v;r+=v*a;t+=a;a*=0.5;f*=2.1;}
+    e+=m*(r/t)*0.24;
+  }
+  // layout: how much of the map is playable land and where the sea comes in
+  const edge=fbm(N.c,x*2.4+9.2,y*2.4,4,0.55)*0.11;
+  if(P.layout==="island"){const dx=(x-0.5)*2,dy=(y-0.5)*2;e-=0.5*smooth(0.86,1.1,Math.pow(dx**4+dy**4,0.25)+edge);}
+  else if(P.layout==="coast"){const c=Math.cos(N.side),sn=Math.sin(N.side),d=(x-0.5)*c+(y-0.5)*sn;e-=0.5*smooth(0.24,0.5,d+edge);}
+  else e+=0.035;
+  // one or two broad rivers winding right across the map: the kind of water that forces bridges
+  for(let c=0;c<N.chan;c++){
+    const th=N.side+1.3+c*1.9,ct=Math.cos(th),st=Math.sin(th),u=(x-0.5)*ct+(y-0.5)*st,v=-(x-0.5)*st+(y-0.5)*ct;
+    const mid=(c?-0.18:0.08)+0.16*N.m(u*2.1+c*9.3,4.7)+0.035*N.m(u*6.3,c*5.1+1.9);
+    const q=Math.abs(v-mid),w=c?0.009:0.013;
+    if(q<w*3)e-=0.3*smooth(w*3,w*0.8,q);
+  }
+  return e;
+}
+function metersArena(e){
+  const s=arenaSea();
+  // a narrow beach, then gentle lowland where towns can sit, and hills that steepen only as they rise
+  if(e>=s){const x=Math.min(1,(e-s)/0.3);return 3+10*Math.min(1,x/0.025)+arenaTop()*x*x;}
+  return -Math.pow(Math.min(1,(s-e)/0.2),0.7)*70;
+}
+function climateArena(x,y,h,oct){
+  const th=THEMES[P.theme]||THEMES.temperate,S=noiseScale(),mo=Math.max(4,Math.min(8,(oct||8)-2));
+  cT=th.T+2.5*N.t(x*2.5,y*2.5)+P.temp*0.3-6.5*(h>0?h:0)/1000;
+  let m=fbm(N.m,x*S*1.3+11,y*S*1.3,mo,0.55)*1.35+0.5;m=m<0?0:m>1?1:m;
+  cR=th.R[0]+(th.R[1]-th.R[0])*m;
+}
 /* ---------------- Language (names) ---------------- */
 function makeLanguage(rand){
   const pick=a=>a[Math.floor(rand()*a.length)];
@@ -375,19 +458,25 @@ function makeLanguage(rand){
 }
 
 /* ---------------- Drainage, rivers, settlements ---------------- */
-const GW=560,GH=280,GN=GW*GH;
+let GW=560,GH=280,GN=GW*GH,CELL_M=WX*MPU/GW; // analysis grid; CELL_M: metres across one cell
+// switch between a planet and a battle map: world extent, metres per unit and the analysis grid all follow P.kind
+function setKind(){
+  if(isArena()){WX=1;MPU=P.km*1000;GW=GH=400;}else{WX=2;MPU=2e7;GW=560;GH=280;}
+  GN=GW*GH;CELL_M=WX*MPU/GW;worldRev++;
+}
 let W0=null; // world-scale analysis
 let names=[],worldName="",peakName="";
 function setSeed(seed){
   P.seed=seed;worldRev++;const base=seedHash(seed),r=mulberry32(base);
   N={e:makeNoise(r),w1:makeNoise(r),w2:makeNoise(r),c:makeNoise(r),k:makeNoise(r),r:makeNoise(r),m:makeNoise(r),t:makeNoise(r)};
   const word=makeLanguage(mulberry32(base^0x9e3779b9));
-  worldName=word(2);peakName="Mount "+word(1);names=[];for(let i=0;i<24;i++)names.push(word(2));
+  worldName=word(2);peakName="Mount "+word(1);names=[];for(let i=0;i<40;i++)names.push(word(2));
+  const a=mulberry32(base^0x7f4a7c15);N.side=a()*Math.PI*2;N.chan=a()<0.72?1+Math.floor(a()*2):0; // battle maps: where the sea comes in, and whether a river channel crosses
 }
 function analyseWorld(){
   const e=new Float32Array(GN),hm=new Float32Array(GN),T=new Float32Array(GN),R=new Float32Array(GN);
   for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){
-    const k=j*GW+i,x=(i+0.5)/GW*2,y=(j+0.5)/GH,v=elev(x,y,8);
+    const k=j*GW+i,x=(i+0.5)/GW*WX,y=(j+0.5)/GH,v=elev(x,y,8);
     e[k]=v;const h=meters(v);hm[k]=h;climate(x,y,h);T[k]=cT;R[k]=cR;
   }
   // priority flood: every land cell drains toward the sea along the lowest spill path
@@ -409,11 +498,11 @@ function analyseWorld(){
   const landAcc=[];let land=0,peak=-1,peakH=-1;
   for(let k=0;k<GN;k++)if(hm[k]>=0){land++;landAcc.push(acc[k]);if(hm[k]>peakH){peakH=hm[k];peak=k;}}
   landAcc.sort((a,b)=>a-b);
-  const thr=Math.max(6,landAcc[Math.floor(landAcc.length*0.965)]||6);
+  const thr=Math.max(6,landAcc[Math.floor(landAcc.length*(isArena()?0.988:0.965))]||6);
   const isR=new Uint8Array(GN);for(let k=0;k<GN;k++)if(hm[k]>=0&&acc[k]>=thr&&T[k]>-14)isR[k]=1;
   const inflow=new Uint8Array(GN);let mouths=0;
   for(let k=0;k<GN;k++)if(isR[k]){const r=recv[k];if(r>=0){if(isR[r])inflow[r]=1;else if(hm[r]<0)mouths++;}}
-  const jr=mulberry32(seedHash(P.seed)^0x51ed27),cw=2/GW,ch=1/GH;
+  const jr=mulberry32(seedHash(P.seed)^0x51ed27),cw=WX/GW,ch=1/GH;
   const buckets=[[],[],[],[],[],[]],seen=new Uint8Array(GN);
   for(let k=0;k<GN;k++){
     if(!isR[k]||inflow[k])continue;
@@ -448,6 +537,13 @@ function analyseWorld(){
     }
     if(size>land*0.03)masses++;
   }
+  const bio=new Uint8Array(GN);for(let k=0;k<GN;k++)bio[k]=biome(hm[k],T[k],R[k]);
+  const f={hm,T,R,isR,acc,recv,thr,bio};
+  if(isArena()){
+    const {cities,bld,streets}=arenaPlaces(f);
+    W0={kind:"arena",buckets,cities,bld,streets,land:land/GN,masses,mouths,peak:{x:(peak%GW+0.5)*cw,y:(((peak/GW)|0)+0.5)*ch,h:peakH},f,cost:null,costField:null,net:null,routes:[]};
+    return;
+  }
   // settlements: rivers, coasts, mild climate, low ground
   const cand=[],sr=mulberry32(seedHash(P.seed)^0x2545f491);
   for(let k=0;k<GN;k++){
@@ -470,29 +566,120 @@ function analyseWorld(){
   cities.forEach((c,i)=>{c.name=names[i]||("Town "+i);c.cap=i===0;c.pop=i===0?capPop:capPop*(0.05+0.55*sr())/Math.pow(i+1,0.55);c.biome=biome(hm[c.k],T[c.k],R[c.k]);c.h=hm[c.k];});
   cities.sort((a,b)=>b.pop-a.pop);
   // keep the analysis fields: the cost map, the pathfinder and the simulation all read them
-  const bio=new Uint8Array(GN);for(let k=0;k<GN;k++)bio[k]=biome(hm[k],T[k],R[k]);
-  const f={hm,T,R,isR,acc,recv,thr,bio};
-  W0={buckets,cities,land:land/GN,masses,mouths,peak:{x:(peak%GW+0.5)*cw,y:(((peak/GW)|0)+0.5)*ch,h:peakH},f,cost:null,costField:null,net:null,routes:[]};
+  W0={kind:"world",buckets,cities,land:land/GN,masses,mouths,peak:{x:(peak%GW+0.5)*cw,y:(((peak/GW)|0)+0.5)*ch,h:peakH},f,cost:null,costField:null,net:null,routes:[]};
 }
 
+
+/* ---------------- Arena: named places and their buildings ---------------- */
+// Compounds a battle map can hold: name, radius (m), building size range (m), number of buildings, preferred ground
+const COMPOUNDS=[
+  ["Military Base",300,[26,64],16,"any"],["Power Plant",210,[24,58],7,"any"],["Quarry",170,[12,30],5,"hill"],
+  ["Factory",190,[30,62],8,"any"],["School",110,[22,42],4,"any"],["Hospital",120,[22,46],4,"any"],
+  ["Prison",150,[20,50],6,"any"],["Farm",170,[10,26],7,"flat"],["Ruins",150,[8,22],11,"any"],
+  ["Stadium",170,[24,40],4,"flat"],["Lumber Mill",150,[14,34],6,"forest"],["Radio Station",90,[10,22],3,"hill"],
+  ["Mansion",110,[22,42],4,"any"],["Harbor",210,[18,44],10,"coast"],["Lighthouse",70,[8,14],2,"coast"],
+  ["Shipyard",190,[30,60],7,"coast"],["Observatory",90,[14,28],3,"hill"],["Train Yard",220,[14,60],9,"flat"],
+  ["Fuel Depot",130,[14,30],6,"any"],["Monastery",110,[16,36],5,"hill"]
+];
+const PLACE_CLS={city:"City",town:"Town",village:"Village",site:"Compound"};
+function arenaPlaces(f){
+  const {hm,isR,bio}=f,hs=seedHash(P.seed),rr=mulberry32(hs^0x1b873593),M=1/MPU,cw=WX/GW,ch=1/GH;
+  const slope=k=>(Math.abs(hm[k+1]-hm[k-1])+Math.abs(hm[k+GW]-hm[k-GW]))/(2*CELL_M);
+  const waterWithin=(k,r,step)=>{const i=k%GW,j=(k/GW)|0;for(let dj=-r;dj<=r;dj+=step)for(let di=-r;di<=r;di+=step){const i2=i+di,j2=j+dj;if(i2>=0&&j2>=0&&i2<GW&&j2<GH&&hm[j2*GW+i2]<0)return true;}return false;};
+  const coastAt=k=>waterWithin(k,8,4);
+  let top=1;for(let k=0;k<GN;k++)if(hm[k]>top)top=hm[k];
+  // candidate sites: dry, gentle ground away from the map edge; water nearby is a bonus, as it is for real towns
+  const cand=[],m=8;
+  for(let j=m;j<GH-m;j++)for(let i=m;i<GW-m;i++){
+    const k=j*GW+i;if(hm[k]<4||isR[k])continue;const sl=slope(k);if(sl>0.14||waterWithin(k,3,1))continue; // the centre stands back from the shore
+    cand.push([(0.14-sl)*9+rr()*1.4+(coastAt(k)?0.5:0)+(isR[k-3]||isR[k+3]||isR[k-3*GW]||isR[k+3*GW]?0.5:0),k]);
+  }
+  cand.sort((a,b)=>b[0]-a[0]);
+  const want=Math.round(P.km*2.6),minD=0.78/P.km*WX,picks=[];
+  for(const [sc,k] of cand){
+    if(picks.length>=want)break;
+    const x=(k%GW+0.5)*cw,y=(((k/GW)|0)+0.5)*ch;
+    if(picks.some(c=>(c.x-x)**2+(c.y-y)**2<minD*minD))continue;
+    picks.push({x,y,k,s:sc});
+  }
+  // what each place is: one or two cities, a ring of towns, then villages and compounds suited to their ground
+  const nCity=P.km>=6?2:1,nTown=Math.round(picks.length*0.28),used=new Set();let ni=0;
+  const word=()=>names[ni++]||("Site "+ni);
+  picks.forEach((c,i)=>{
+    c.cap=i===0;c.h=hm[c.k];c.biome=bio[c.k];
+    if(i<nCity){c.cls="city";c.r=380;}
+    else if(i<nCity+nTown){c.cls="town";c.r=240;}
+    else if(rr()<0.42){c.cls="village";c.r=140;}
+    else{
+      const site=coastAt(c.k)?"coast":c.h>top*0.55?"hill":[6,9,10,13,14].includes(c.biome)?"forest":slope(c.k)<0.03?"flat":"any";
+      const fits=COMPOUNDS.filter(t=>!used.has(t[0])&&(t[4]===site||t[4]==="any"));
+      const t=fits.find(t=>t[4]===site&&rr()<0.7)||fits[Math.floor(rr()*fits.length)];
+      if(!t){c.cls="village";c.r=140;}
+      else{used.add(t[0]);c.cls="site";c.kind=t[0];c.r=t[1];c.spec=t;}
+    }
+    c.name=c.cls==="site"?(rr()<0.45?word()+" ":"")+c.kind:word();
+    if(!c.kind)c.kind=PLACE_CLS[c.cls];
+  });
+  // buildings: towns are blocks of houses between streets laid out at a local angle; compounds are a few large sheds
+  const out=[],streets=[];
+  const street=(x1,y1,x2,y2)=>{ // keep only the stretches over dry land
+    const n=Math.max(2,Math.ceil(Math.hypot(x2-x1,y2-y1)*MPU/10));let a=-1;
+    for(let q=0;q<=n;q++){const t=q/n,x=x1+(x2-x1)*t,y=y1+(y2-y1)*t,dry=x>=0&&y>=0&&x<WX&&y<1&&hm[Math.floor(y*GH)*GW+Math.floor(x/cw)]>=2;
+      if(dry&&a<0)a=t;
+      if((!dry||q===n)&&a>=0){const b=dry?t:(q-1)/n;if(b>a)streets.push(x1+(x2-x1)*a,y1+(y2-y1)*a,x1+(x2-x1)*b,y1+(y2-y1)*b);a=-1;}
+    }
+  };
+  const ok=(x,y)=>{if(x<0||y<0||x>=WX||y>=1)return false;const k=Math.floor(y*GH)*GW+Math.floor(x/cw);return hm[k]>=2&&!isR[k]&&slope(k)<0.2;};
+  for(const c of picks){
+    const r=mulberry32(hs^Math.imul(c.k+1,0x9E3779B1)),ang=r()*Math.PI/2,ca=Math.cos(ang),sa=Math.sin(ang),b0=out.length;
+    const add=(u,v,w,h)=>{const x=c.x+(u*ca-v*sa)*M,y=c.y+(u*sa+v*ca)*M;if(ok(x,y))out.push(x,y,w*M,h*M,ang);};
+    if(c.cls==="site"){
+      const [,R,[lo,hi],n]=c.spec,L=hi*1.25;let made=0;
+      for(let ring=0;ring<6&&made<n;ring++)for(let gx=-ring;gx<=ring&&made<n;gx++)for(let gy=-ring;gy<=ring&&made<n;gy++){
+        if(Math.max(Math.abs(gx),Math.abs(gy))!==ring||gx*L>R||gy*L>R)continue;
+        const n0=out.length;add(gx*L+(r()-0.5)*8,gy*L+(r()-0.5)*8,lo+(hi-lo)*r(),lo+(hi-lo)*r()*0.8);if(out.length>n0)made++;
+      }
+    }else{
+      const L=c.cls==="city"?30:c.cls==="town"?33:42,dens=c.cls==="village"?0.5:0.86,big=c.cls==="city"?1.35:1;
+      const offs=c.cls==="city"?[0,-3.5*L,3.5*L]:c.cls==="town"?[0,2.5*L]:[0]; // street lines, the same both ways
+      for(const o of offs){
+        const ext=Math.sqrt(Math.max(0,c.r*c.r-o*o))*(c.cls==="village"?0.8:1.05);
+        street(c.x+(o*-sa-ext*ca)*M,c.y+(o*ca-ext*sa)*M,c.x+(o*-sa+ext*ca)*M,c.y+(o*ca+ext*sa)*M);
+        street(c.x+(o*ca+ext*sa)*M,c.y+(o*sa-ext*ca)*M,c.x+(o*ca-ext*sa)*M,c.y+(o*sa+ext*ca)*M);
+      }
+      for(let gu=-c.r;gu<=c.r;gu+=L)for(let gv=-c.r;gv<=c.r;gv+=L){
+        if(offs.some(o=>Math.abs(gu-o)<L*0.6||Math.abs(gv-o)<L*0.6))continue; // keep the streets clear
+        const d=Math.hypot(gu,gv)/c.r;if(d>1||r()>dens*(1-d*d*0.85))continue;
+        add(gu+(r()-0.5)*6,gv+(r()-0.5)*6,(10+r()*12)*big,(8+r()*9)*big);
+      }
+    }
+    c.bld=[b0/5,out.length/5];c.pop=(out.length-b0)/5;
+  }
+  return {cities:picks,bld:Float32Array.from(out),streets:Float32Array.from(streets)};
+}
 /* ---------------- Travel cost, A* routes, scheduler ---------------- */
 // Friction per biome (index into B): how hard a kilometre is to cross, relative to open grassland.
 const FRICTION=[1,0.85,0.7,9,10,3,2.2,1.3,1,1.6,2.4,2.6,1.2,1.8,3.2,0.9,4.5,9];
 const DX8=[-1,0,1,-1,1,-1,0,1],DY8=[-1,-1,-1,0,0,1,1,1],DIAG=[1,0,1,0,0,1,0,1];
-const PORT=12,HARBOUR=4,FORD=0.8,ROAD=0.5,LANE=0.8,MIN_COST=0.24; // MIN_COST: cheapest possible step per cell, keeps the A* heuristic admissible
+const PORT=12,HARBOUR=4,FORD=0.8,ROAD=0.5,LANE=0.8,MIN_COST=0.24,BRIDGE=22; // MIN_COST: cheapest possible step per cell, keeps the A* heuristic admissible
 
 // Cost of one step between neighbouring analysis cells. Slope and rivers depend on direction, so it is computed per step.
 class CostField{
   constructor(f){
     this.f=f;this.base=new Float32Array(GN);this.road=new Float32Array(GN).fill(1);this.city=new Uint8Array(GN);
     for(let k=0;k<GN;k++)this.base[k]=FRICTION[f.bio[k]];
+    // on a battle map water is crossed by bridges (dear per cell, so only narrow water is bridged) and a 12% grade
+    // doubles the effort; on a planet ships load at ports and 600 m of climb between cells doubles it
+    this.arena=isArena();this.grade=this.arena?CELL_M*0.12:600;
   }
   step(a,b,diag){
     const f=this.f,d=diag?Math.SQRT2:1,sa=f.hm[a]<0,sb=f.hm[b]<0;
+    const rd=Math.min(this.road[a],this.road[b]);
+    if(this.arena&&(sa||sb))return d*BRIDGE*rd;
     if(sa!==sb)return d+((sa?this.city[b]:this.city[a])?HARBOUR:PORT); // loading or unloading a ship; towns have harbours
-    const rd=Math.min(this.road[a],this.road[b]),flat=d*0.5*(this.base[a]+this.base[b]);
+    const flat=d*0.5*(this.base[a]+this.base[b]);
     if(sa)return flat*rd;
-    const dh=(f.hm[b]-f.hm[a])/(600*d);
+    const dh=(f.hm[b]-f.hm[a])/(this.grade*d);
     let c=flat*(1+dh*dh); // a 600 m climb between cells doubles the effort
     if(f.recv[a]===b||f.recv[b]===a){if(f.isR[a]&&f.isR[b])c*=0.55;} // following a river valley
     else if(f.isR[b])c+=FORD*(0.5+Math.log2(f.acc[b]/f.thr));       // fording: wider rivers cost more
@@ -576,14 +763,14 @@ const segKey=(a,b)=>a<b?a*GN+b:b*GN+a;
 // cell centre, nudged by a fixed per-cell offset so roads do not look gridded; towns stay exact
 function cellPoint(k,exact){
   let jx=0,jy=0;if(!exact){const h=Math.imul(k,0x9E3779B1)>>>0;jx=((h&1023)/1023-0.5)*0.5;jy=((h>>>10&1023)/1023-0.5)*0.5;}
-  return [(k%GW+0.5+jx)*2/GW,(((k/GW)|0)+0.5+jy)/GH];
+  return [(k%GW+0.5+jx)*WX/GW,(((k/GW)|0)+0.5+jy)/GH];
 }
 // Turn the set of used cell-to-cell segments into drawable polylines: chains between junctions, smoothed once each.
 function traceNetwork(seg,cost){
-  const f=cost.f,adj=new Map(),cw=2/GW,ch=1/GH;
+  const f=cost.f,adj=new Map();
   const link=(a,b)=>{let l=adj.get(a);if(!l){l=[];adj.set(a,l);}l.push(b);};
   let maxT=0,km=0;
-  for(const [sk,t] of seg){const a=Math.floor(sk/GN),b=sk-a*GN;link(a,b);link(b,a);if(t>maxT)maxT=t;km+=(Math.abs(a-b)===1||Math.abs(a-b)===GW?1:Math.SQRT2)*40000/GW;}
+  for(const [sk,t] of seg){const a=Math.floor(sk/GN),b=sk-a*GN;link(a,b);link(b,a);if(t>maxT)maxT=t;km+=(Math.abs(a-b)===1||Math.abs(a-b)===GW?1:Math.SQRT2)*CELL_M/1000;}
   const isNode=k=>{
     const l=adj.get(k);if(l.length!==2||cost.city[k])return true;
     const s=f.hm[k]<0;return (f.hm[l[0]]<0)!==s||(f.hm[l[1]]<0)!==s||seg.get(segKey(k,l[0]))!==seg.get(segKey(k,l[1]));
@@ -610,7 +797,13 @@ function traceNetwork(seg,cost){
       out.push(s);
     }
   }
-  return {land,sea,km};
+  // bridges (or sea crossings): connected stretches of water the network crosses
+  let bridges=0;const seen=new Set();
+  for(const k of adj.keys()){
+    if(f.hm[k]>=0||seen.has(k))continue;bridges++;const st=[k];seen.add(k);
+    while(st.length){const c=st.pop();for(const n of adj.get(c))if(f.hm[n]<0&&!seen.has(n)){seen.add(n);st.push(n);}}
+  }
+  return {land,sea,km,bridges};
 }
 
 // The network grows one route at a time, strongest trade links first. Every finished route makes its own ground
@@ -1201,7 +1394,7 @@ const MCX=(()=>{
   // o: {W,H (blocks, multiples of 32), x0,y0,span (world rectangle; span is its width), name, progress(f,msg), cancelled()}
   async function build(o){
     const W=o.W,H=o.H,U=o.span/W,nCol=W*H,CW=W>>4,CH=H>>4,hs=seedHash(P.seed);
-    const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*P.scale)))-1)); // finest detail about four blocks wide
+    const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*noiseScale())))-1)); // finest detail about four blocks wide
     const rnd=(i,j,s)=>{let h=Math.imul(i,374761393)^Math.imul(j,668265263)^Math.imul((s+hs)|0,1274126177);h=Math.imul(h^h>>>13,2246822519);h^=h>>>16;return (h>>>0)/4294967296;};
     let last=performance.now();
     const step=async(f,msg)=>{const n=performance.now();if(n-last<50)return;o.progress(f,msg);await new Promise(r=>setTimeout(r,0));last=performance.now();if(o.cancelled())throw {code:"cancelled"};};
@@ -1213,7 +1406,7 @@ const MCX=(()=>{
       const wy=o.y0+(j+0.5)*U;
       for(let i=0;i<W;i++){
         const k=j*W+i,wx=o.x0+(i+0.5)*U;let h=-6200,b=0;
-        if(wx>=0&&wx<=2&&wy>=0&&wy<=1){h=meters(elev(wx,wy,oct));climate(wx,wy,h,oct);b=biome(h,cT,cR);}
+        if(wx>=0&&wx<=WX&&wy>=0&&wy<=1){h=meters(elev(wx,wy,oct));climate(wx,wy,h,oct);b=biome(h,cT,cR);}
         g[k]=h<0?-0.001-90*Math.pow(Math.min(1,-h/6200),0.7):250*Math.pow(Math.min(1,h/8920),0.62);
         bio[k]=b;if(b===15)inland[k]=biome(11,cT,cR); // what a low coastal plain becomes away from the water
       }
@@ -1250,7 +1443,7 @@ const MCX=(()=>{
     // 2. rivers: rasterise the drainage network, then set each channel's water level to its lowest bank
     const wat=new Int16Array(nCol).fill(NONE);
     if(W0){
-      const riv=new Uint8Array(nCol),widths=[0.8,1.1,1.5,2,2.6,3.3],zf=Math.pow(Math.max(1,2/o.span),0.42);
+      const riv=new Uint8Array(nCol),widths=[0.8,1.1,1.5,2,2.6,3.3],zf=Math.pow(Math.max(1,WX/o.span),0.42);
       for(let b=0;b<6;b++){
         const a=W0.buckets[b],wb=Math.max(1,Math.min(7,Math.round(Math.min(14,widths[b]*zf)*W/1100))),r=(wb-1)/2,rr=r*r+0.3,ri=Math.ceil(r);
         for(let q=0;q<a.length;q+=4){
@@ -1485,8 +1678,8 @@ const BG=[12,20,28],BGCSS="rgb(12,20,28)";
 let cssW=800,cssH=500,dpr=1;
 const view={cx:1,cy:0.5,zoom:1};
 let mode="biome";
-const opt={rivers:true,cities:true,grid:true,borders:true,routes:true,res:false};
-const unit=()=>Math.max(2/cssW,1/cssH)/view.zoom; // world units per CSS px
+const opt={rivers:true,cities:true,grid:true,borders:true,routes:true,res:false,roads:true,bld:true};
+const unit=()=>Math.max(WX/cssW,1/cssH)/view.zoom; // world units per CSS px
 
 const RAMPS={
   oceanB:[[-6200,16,42,72],[-3000,26,64,104],[-1200,40,92,132],[-150,72,134,170],[0,100,162,188]],
@@ -1504,21 +1697,21 @@ function ramp(st,v){
 }
 function makeJob(scale){
   const W=Math.max(8,Math.round(cssW*scale)),H=Math.max(4,Math.round(cssH*W/cssW)),U=unit()*cssW/W;
-  const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*P.scale)))+1));
+  const oct=Math.max(3,Math.min(18,Math.round(Math.log2(1/(U*noiseScale())))+1));
   const cv=document.createElement("canvas");cv.width=W;cv.height=H;
-  return {W,H,U,oct,cx:view.cx,cy:view.cy,E:9/Math.pow(view.zoom,0.08),
+  return {W,H,U,oct,cx:view.cx,cy:view.cy,E:(isArena()?1.5:9)/Math.pow(view.zoom,0.08),
     hs:new Float32Array(W*H),ts:new Float32Array(W*H),rs:new Float32Array(W*H),img:new ImageData(W,H),cv,cx2:cv.getContext("2d"),row:0,shaded:0,put:0};
 }
 function computeRow(j,py){
   const {W,H,U,hs,ts,rs,oct}=j,wy=j.cy+(py+0.5-H/2)*U;
   for(let px=0;px<W;px++){
     const k=py*W+px,wx=j.cx+(px+0.5-W/2)*U;
-    if(wx<0||wx>2||wy<0||wy>1){hs[k]=NaN;continue;}
+    if(wx<0||wx>WX||wy<0||wy>1){hs[k]=NaN;continue;}
     const h=meters(elev(wx,wy,oct));hs[k]=h;climate(wx,wy,h,oct);ts[k]=cT;rs[k]=cR;
   }
 }
 function shadeRow(j,py){
-  const {W,H,hs,ts,rs,E}=j,d=j.img.data,mpp=j.U*2e7;
+  const {W,H,hs,ts,rs,E}=j,d=j.img.data,mpp=j.U*MPU,ar=isArena(),snow=ar&&P.theme==="snow",top=ar?arenaTop():0;
   const Lx=-0.58,Ly=-0.58,Lz=0.57;
   for(let px=0;px<W;px++){
     const k=py*W+px,o=k*4,h=hs[k];d[o+3]=255;
@@ -1526,7 +1719,7 @@ function shadeRow(j,py){
     let hL=px>0?hs[k-1]:h,hR=px<W-1?hs[k+1]:h,hU=py>0?hs[k-W]:h,hD=py<H-1?hs[k+W]:h;
     if(hL!==hL)hL=h;if(hR!==hR)hR=h;if(hU!==hU)hU=h;if(hD!==hD)hD=h;
     const sea=h<0,coast=!sea&&(hL<0||hR<0||hU<0||hD<0);
-    const g=v=>v<0?v*0.1:v;
+    const g=v=>v<0?v*(ar?0.4:0.1):v;
     const dzx=(g(hR)-g(hL))/(2*mpp)*E,dzy=(g(hD)-g(hU))/(2*mpp)*E;
     const len=Math.sqrt(dzx*dzx+dzy*dzy+1);
     let f=1+((-dzx*Lx-dzy*Ly+Lz)/len-Lz)*1.7;
@@ -1534,9 +1727,12 @@ function shadeRow(j,py){
     f=f<0.35?0.35:f>1.55?1.55:f;
     const T=ts[k],R=rs[k];
     if(mode==="biome"){
-      if(sea){if(T<-9){col[0]=212;col[1]=224;col[2]=232;}else ramp(RAMPS.oceanB,h);}
-      else{const c=B[biome(h,T,R)][1];const lift=1+Math.min(h,3500)/3500*0.1;col[0]=c[0]*lift;col[1]=c[1]*lift;col[2]=c[2]*lift;}
-    }else if(mode==="relief"){ramp(sea?RAMPS.reliefO:RAMPS.reliefL,h);}
+      if(sea){if(T<-9){col[0]=212;col[1]=224;col[2]=232;}else ramp(RAMPS.oceanB,ar?h*45:h);}
+      else{
+        const c=B[biome(h,T,R)][1];const lift=1+Math.min(h,3500)/3500*0.1;col[0]=c[0]*lift;col[1]=c[1]*lift;col[2]=c[2]*lift;
+        if(snow){const w=0.45+0.5*smooth(300,800,R);col[0]+=(236-col[0])*w;col[1]+=(240-col[1])*w;col[2]+=(244-col[2])*w;} // snow lies thinner where it is dry and windswept
+      }
+    }else if(mode==="relief"){ramp(sea?RAMPS.reliefO:RAMPS.reliefL,ar?(sea?h*45:h/top*6200):h);}
     else if(mode==="temp"){ramp(RAMPS.temp,T);if(sea){col[0]*=0.55;col[1]*=0.6;col[2]*=0.68;}}
     else if(mode==="rain"){if(sea){col[0]=26;col[1]=40;col[2]=56;}else ramp(RAMPS.rain,R);}
     else ramp(RAMPS.cost,Math.log2(sea?FRICTION[biome(h,T,R)]:costAt(j.cx+(px+0.5-W/2)*j.U,j.cy+(py+0.5-H/2)*j.U)));
@@ -1593,8 +1789,9 @@ function drawOverlay(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.lineCap="round";ctx.lineJoin="round";
   // world frame
-  ctx.strokeStyle="rgba(233,227,211,.25)";ctx.lineWidth=1;ctx.strokeRect(sx(0),sy(0),2/u,1/u);
-  if(opt.grid){
+  ctx.strokeStyle="rgba(233,227,211,.25)";ctx.lineWidth=1;ctx.strokeRect(sx(0),sy(0),WX/u,1/u);
+  if(opt.grid&&isArena())drawArenaGrid(sx,sy,u);
+  else if(opt.grid){
     const z=view.zoom,step=z<2.5?30:z<7?10:z<20?5:z<80?1:z<400?0.25:0.05;
     ctx.strokeStyle="rgba(233,227,211,.13)";ctx.lineWidth=1;ctx.beginPath();
     ctx.font="500 10px 'JetBrains Mono', monospace";ctx.fillStyle="rgba(233,227,211,.6)";
@@ -1621,6 +1818,7 @@ function drawOverlay(){
     }
   }
   drawSimRoutes(sx,sy);
+  if(W0&&W0.bld&&opt.bld)drawBuildings(sx,sy,u);
   if(opt.cities&&W0){
     const boxes=[];
     const label=(text,x,y,font,color)=>{
@@ -1635,7 +1833,8 @@ function drawOverlay(){
       ctx.beginPath();ctx.moveTo(px,py-6);ctx.lineTo(px+5,py+3);ctx.lineTo(px-5,py+3);ctx.closePath();ctx.stroke();ctx.fill();
       label(peakName+" "+fmtInt(pk.h)+" m",px,py,"italic 500 11px Inter, sans-serif","#e9e3d3");
     }
-    W0.cities.forEach((c,i)=>{
+    if(W0.kind==="arena")arenaLabels(sx,sy,label);
+    else W0.cities.forEach((c,i)=>{
       const x=sx(c.x),y=sy(c.y);if(x<-40||x>cssW+40||y<-20||y>cssH+20)return;
       if(!c.cap&&view.zoom<1.6&&i>9)return;
       ctx.lineWidth=2;ctx.strokeStyle="rgba(10,16,22,.9)";
@@ -1655,13 +1854,53 @@ function drawOverlay(){
 }
 function updateChrome(){
   const z=view.zoom;$("zoomTxt").textContent="×"+(z<10?z.toFixed(1):Math.round(z));
-  const km=unit()*20000,raw=km*110,p=Math.pow(10,Math.floor(Math.log10(raw)));
+  const km=unit()*MPU/1000,raw=km*110,p=Math.pow(10,Math.floor(Math.log10(raw)));
   const nice=raw/p>=5?5*p:raw/p>=2?2*p:p;
   $("scaleBar").style.width=(nice/km).toFixed(1)+"px";
   $("scaleTxt").textContent=nice>=1?fmtInt(nice)+" km":fmtInt(nice*1000)+" m";
   mcInfo();
 }
 
+
+/* ---- battle map overlays ---- */
+// a 1 km grid lettered A, B, C… across and numbered down, the way such maps are read; 100 m lines once zoomed in
+function drawArenaGrid(sx,sy,u){
+  const km=1000/MPU,fine=km/10;
+  const lines=(step,alpha)=>{
+    ctx.strokeStyle="rgba(233,227,211,"+alpha+")";ctx.lineWidth=1;ctx.beginPath();
+    for(let x=0;x<=WX+1e-9;x+=step){const X=sx(x);if(X<-1||X>cssW+1)continue;ctx.moveTo(X,Math.max(0,sy(0)));ctx.lineTo(X,Math.min(cssH,sy(1)));}
+    for(let y=0;y<=1+1e-9;y+=step){const Y=sy(y);if(Y<-1||Y>cssH+1)continue;ctx.moveTo(Math.max(0,sx(0)),Y);ctx.lineTo(Math.min(cssW,sx(WX)),Y);}
+    ctx.stroke();
+  };
+  if(fine/u>14)lines(fine,0.07);
+  lines(km,0.16);
+  ctx.font="500 10px 'JetBrains Mono', monospace";ctx.fillStyle="rgba(233,227,211,.62)";
+  const n=Math.round(P.km),top=Math.max(sy(0),0)+52,left=Math.max(sx(0),0)+6;
+  for(let i=0;i<n;i++){const X=sx((i+0.5)*km);if(X>30&&X<cssW-30&&top<cssH-30)ctx.fillText(String.fromCharCode(65+i),X-3,top);}
+  for(let j=0;j<n;j++){const Y=sy((j+0.5)*km);if(Y>70&&Y<cssH-40)ctx.fillText(String(j+1),left,Y+4);}
+}
+// buildings: pale footprints, drawn as soon as they are a pixel or more across
+function drawBuildings(sx,sy,u){
+  const b=W0.bld,px=12/(u*MPU);if(px<0.6)return;
+  ctx.fillStyle=px<2?"rgba(236,222,170,.85)":"#e9dba6";ctx.strokeStyle="rgba(10,16,22,.75)";ctx.lineWidth=1;
+  const outline=px>=3;ctx.beginPath();
+  for(let q=0;q<b.length;q+=5){
+    const x=sx(b[q]),y=sy(b[q+1]);if(x<-40||x>cssW+40||y<-40||y>cssH+40)continue;
+    const w=Math.max(1,b[q+2]/u),h=Math.max(1,b[q+3]/u),a=b[q+4],c=Math.cos(a)/2,s=Math.sin(a)/2;
+    ctx.moveTo(x-w*c+h*s,y-w*s-h*c);ctx.lineTo(x+w*c+h*s,y+w*s-h*c);ctx.lineTo(x+w*c-h*s,y+w*s+h*c);ctx.lineTo(x-w*c-h*s,y-w*s+h*c);ctx.closePath();
+  }
+  ctx.fill();if(outline){ctx.strokeStyle="rgba(10,16,22,.5)";ctx.stroke();}
+}
+// place names: cities large, towns and villages plain, compounds smaller; minor names wait for zoom or room
+function arenaLabels(sx,sy,label){
+  const rank={city:0,town:1,site:2,village:3},list=W0.cities.slice().sort((a,b)=>rank[a.cls]-rank[b.cls]);
+  for(const c of list){
+    const x=sx(c.x),y=sy(c.y);if(x<-60||x>cssW+60||y<-20||y>cssH+20)continue;
+    const font=c.cls==="city"?"700 15px":c.cls==="town"?"600 13px":c.cls==="site"?"500 11px":"500 12px";
+    ctx.font=font+" Inter, sans-serif";const w=ctx.measureText(c.name).width; // label() starts text 8 px right of x
+    label(c.name,x-w/2-8,y,font+" Inter, sans-serif",c.cls==="city"?"#f1c877":c.cls==="site"?"#cfd8e3":"#e9e3d3");
+  }
+}
 /* ---------------- Formatting ---------------- */
 const fmtInt=v=>Math.round(v).toLocaleString("en-US");
 function fmtDeg(v,pos,neg){const a=Math.abs(v);const s=a%1===0?a.toFixed(0):a<10?a.toFixed(2).replace(/0+$/,""):a.toFixed(2).replace(/0+$/,"");return v===0?"0°":s+"°"+(v>0?pos:neg);}
@@ -1670,14 +1909,15 @@ const rgb=c=>"rgb("+c.join(",")+")";
 
 /* ---------------- Readout + panel ---------------- */
 function readAt(wx,wy,title){
-  if(!N||wx<0||wx>2||wy<0||wy>1)return;
+  if(!N||wx<0||wx>WX||wy<0||wy>1)return;
   const oct=full?full.oct+1:low?low.oct+2:10;
   const h=meters(elev(wx,wy,oct));climate(wx,wy,h,oct);const T=cT,R=cR,b=biome(h,T,R);
   const lat=90-wy*180,lon=wx/2*360-180;
   $("readLabel").textContent=title||"Terrain readout";
   $("readout").innerHTML=
     '<div class="biome"><span class="sw" style="background:'+rgb(B[b][1])+'"></span>'+B[b][0]+'</div>'+
-    '<dt>Position</dt><dd>'+Math.abs(lat).toFixed(2)+'°'+(lat>=0?"N":"S")+' '+Math.abs(lon).toFixed(2)+'°'+(lon>=0?"E":"W")+'</dd>'+
+    (isArena()?'<dt>Grid square</dt><dd>'+String.fromCharCode(65+Math.min(P.km-1,Math.floor(wx*P.km)))+Math.min(P.km,Math.floor(wy*P.km)+1)+' · '+(wx*P.km).toFixed(2)+' km, '+(wy*P.km).toFixed(2)+' km</dd>'
+      :'<dt>Position</dt><dd>'+Math.abs(lat).toFixed(2)+'°'+(lat>=0?"N":"S")+' '+Math.abs(lon).toFixed(2)+'°'+(lon>=0?"E":"W")+'</dd>')+
     '<dt>'+(h<0?"Depth":"Elevation")+'</dt><dd>'+fmtInt(Math.abs(h))+' m</dd>'+
     '<dt>Mean temperature</dt><dd>'+(T<0?"−":"")+Math.abs(T).toFixed(1)+' °C</dd>'+
     '<dt>Rainfall</dt><dd>'+(h<0?"—":fmtInt(R)+' mm/yr')+'</dd>'+
@@ -1686,7 +1926,8 @@ function readAt(wx,wy,title){
 function updatePanel(){
   $("worldName").textContent=worldName;$("seedTxt").textContent=P.seed;
   document.title=worldName+" · Worldsmith";
-  $("stats").innerHTML=
+  if(W0.kind==="arena")arenaStats();
+  else $("stats").innerHTML=
     '<div><strong>'+Math.round(W0.land*100)+'%</strong><span>Land surface</span></div>'+
     '<div><strong>'+W0.masses+'</strong><span>Major landmasses</span></div>'+
     '<div><strong>'+fmtInt(W0.peak.h)+' m</strong><span>'+peakName+'</span></div>'+
@@ -1694,12 +1935,14 @@ function updatePanel(){
   const ul=$("cities");ul.innerHTML="";
   W0.cities.forEach((c,i)=>{
     const li=document.createElement("li"),bt=document.createElement("button");bt.type="button";
-    bt.innerHTML='<span class="mark'+(c.cap?" cap":"")+'"></span><span>'+c.name+(c.cap?" · capital":"")+'<span class="meta">'+B[c.biome][0]+' · '+fmtInt(c.h)+' m</span></span><span class="pop">'+fmtPop(c.pop)+'</span>';
-    bt.addEventListener("click",()=>{const sim=simOn();flyTo(c.x,c.y,sim?10:28);select(sim?{kind:"city",id:i}:{kind:"point",wx:c.x,wy:c.y,title:c.name});});
+    bt.innerHTML=W0.kind==="arena"
+      ?'<span class="mark'+(c.cls==="city"?" cap":c.cls==="site"?" site":"")+'"></span><span>'+c.name+'<span class="meta">'+c.kind+' · '+B[c.biome][0]+' · '+fmtInt(c.h)+' m</span></span><span class="pop">'+c.pop+' bldg</span>'
+      :'<span class="mark'+(c.cap?" cap":"")+'"></span><span>'+c.name+(c.cap?" · capital":"")+'<span class="meta">'+B[c.biome][0]+' · '+fmtInt(c.h)+' m</span></span><span class="pop">'+fmtPop(c.pop)+'</span>';
+    bt.addEventListener("click",()=>{const sim=simOn();flyTo(c.x,c.y,isArena()?(c.cls==="city"?3.5:6):sim?10:28);select(sim?{kind:"city",id:i}:{kind:"point",wx:c.x,wy:c.y,title:c.name});});
     li.appendChild(bt);ul.appendChild(li);
   });
   $("oSea").textContent=Math.round(W0.land*100)+"% land";
-  const cap=W0.cities[0];if(cap)select({kind:"point",wx:cap.x,wy:cap.y,title:cap.name+" · capital"});
+  const cap=W0.cities[0];if(cap)select({kind:"point",wx:cap.x,wy:cap.y,title:cap.name+(isArena()?" · "+cap.kind.toLowerCase():" · capital")});
 }
 function updateLegend(){
   const el=$("legend");
@@ -1708,7 +1951,8 @@ function updateLegend(){
     el.innerHTML='<div class="legend">'+B.map(b=>'<div><span class="sw" style="background:'+rgb(b[1])+'"></span>'+b[0]+'</div>').join("")+'</div>';
     return;
   }
-  const map={relief:["Elevation above sea level",RAMPS.reliefL,["0 m","3,000 m","6,200 m"]],temp:["Mean annual temperature",RAMPS.temp,["−40 °C","0 °C","35 °C"]],rain:["Annual rainfall",RAMPS.rain,["0 mm","1,500 mm","3,500 mm"]],cost:["Travel cost · open grassland = 1×",RAMPS.cost,["0.4×","3×","24×"]]}[mode];
+  const top=isArena()?arenaTop():6200;
+  const map={relief:["Elevation above sea level",RAMPS.reliefL,["0 m",fmtInt(top/2)+" m",fmtInt(top)+" m"]],temp:["Mean annual temperature",RAMPS.temp,["−40 °C","0 °C","35 °C"]],rain:["Annual rainfall",RAMPS.rain,["0 mm","1,500 mm","3,500 mm"]],cost:["Travel cost · open grassland = 1×",RAMPS.cost,["0.4×","3×","24×"]]}[mode];
   $("legendLabel").textContent=map[0];
   const st=map[1],a=st[0][0],z=st[st.length-1][0];
   el.innerHTML='<div class="ramp" style="background:linear-gradient(90deg,'+st.map(s=>'rgb('+s[1]+','+s[2]+','+s[3]+') '+((s[0]-a)/(z-a)*100).toFixed(1)+'%').join(",")+')"></div><div class="rampticks"><span>'+map[2][0]+'</span><span>'+map[2][1]+'</span><span>'+map[2][2]+'</span></div>';
@@ -1726,19 +1970,51 @@ let regenTimer=0;
 function regenerate(){
   setStatus("Generating…");analyseWorld();
   SIM=null;simGen++;routeGen++;$("timebar").hidden=true; // a new world invalidates the simulation; rebuild it only if its tab is open
-  if(ui.tab==="sim")startSim();
+  if(isArena()){const rg=routeGen;sched.add(routeTask(rg,(n,total,km,done)=>{if(rg!==routeGen)return;compose();if(done)arenaStats();}));} // a battle map's roads belong to the map itself
+  else if(ui.tab==="sim")startSim();
   updatePanel();renderNow();
 }
 function newSeed(seed){
   seed=(seed||"").toLowerCase().replace(/[^a-z0-9-]/g,"").slice(0,32)||"ember-4";
   $("seed").value=seed;setSeed(seed);readParams();
-  try{history.replaceState(null,"","#"+seed);}catch(e){}
-  view.cx=1;view.cy=0.5;view.zoom=1;regenerate();
+  try{window.history.replaceState(null,"",hashFor());}catch(e){} // window.: the history engine (06) shadows the name
+  view.cx=WX/2;view.cy=0.5;view.zoom=1;regenerate();
 }
 function randomSeed(){const w=makeLanguage(Math.random)(2).toLowerCase();return w+"-"+(10+Math.floor(Math.random()*90));}
 
+
+/* ---- map kind: planet or battle map ---- */
+// The link names the map: "#seed" for a planet, "#seed@a8.snow.island" for an 8 km snowy island battle map.
+const hashFor=()=>"#"+P.seed+(isArena()?"@a"+P.km+"."+P.theme+"."+P.layout:"");
+function parseHash(h){ // sets the map kind and options from a link; returns the seed, or "" when the link is not one of ours
+  const m=/^([a-z0-9-]{1,32})(?:@a(4|6|8)\.(temperate|snow|desert|jungle)\.(island|coast|inland))?$/.exec(h||"");
+  if(!m)return "";
+  if(m[2])Object.assign(P,{kind:"arena",km:+m[2],theme:m[3],layout:m[4]});else P.kind="world";
+  return m[1];
+}
+function applyKind(){
+  setKind();const a=isArena();
+  document.querySelectorAll("[data-kind]").forEach(e=>{e.hidden=e.dataset.kind!==P.kind;});
+  document.querySelectorAll("#kindSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===P.kind?"true":"false"));
+  $("optGrid").checked=$("optGridA").checked=opt.grid;$("aSize").value=P.km;$("aTheme").value=P.theme;$("aLayout").value=P.layout;
+  document.querySelector('.tabs [data-tab="sim"]').hidden=a;
+  if(a&&ui.tab==="sim")setTab("gen");
+  updateLegend();mcSizes();
+}
+function arenaStats(){
+  const net=W0.net,n=W0.cities.length,sites=W0.cities.filter(c=>c.cls==="site").length;
+  $("stats").innerHTML=
+    '<div><strong>'+P.km+' × '+P.km+' km</strong><span>'+THEMES[P.theme].name+' · '+LAYOUTS[P.layout]+'</span></div>'+
+    '<div><strong>'+Math.round(W0.land*100)+'%</strong><span>Land surface</span></div>'+
+    '<div><strong>'+n+'</strong><span>Named places · '+sites+' compounds</span></div>'+
+    '<div><strong>'+fmtInt(W0.bld.length/5)+'</strong><span>Buildings</span></div>'+
+    '<div><strong>'+(net?(net.km<10?net.km.toFixed(1):fmtInt(net.km))+' km':"…")+'</strong><span>Roads</span></div>'+
+    '<div><strong>'+(net?net.bridges:"…")+'</strong><span>Bridges</span></div>'+
+    '<div><strong>'+fmtInt(W0.peak.h)+' m</strong><span>'+peakName+'</span></div>'+
+    '<div><strong>'+W0.mouths+'</strong><span>Streams reaching the sea</span></div>';
+}
 /* ---------------- Interaction ---------------- */
-function clampView(){view.zoom=Math.min(2500,Math.max(1,view.zoom));view.cx=Math.min(2,Math.max(0,view.cx));view.cy=Math.min(1,Math.max(0,view.cy));}
+function clampView(){view.zoom=Math.min(isArena()?80:2500,Math.max(1,view.zoom));view.cx=Math.min(WX,Math.max(0,view.cx));view.cy=Math.min(1,Math.max(0,view.cy));}
 function zoomAt(mx,my,factor){
   const u=unit(),wx=view.cx+(mx-cssW/2)*u,wy=view.cy+(my-cssH/2)*u;
   view.zoom*=factor;clampView();const u2=unit();
@@ -1798,20 +2074,28 @@ mapEl.addEventListener("keydown",e=>{
 });
 $("zin").addEventListener("click",()=>zoomAt(cssW/2,cssH/2,2));
 $("zout").addEventListener("click",()=>zoomAt(cssW/2,cssH/2,0.5));
-$("zreset").addEventListener("click",()=>flyTo(1,0.5,1));
+$("zreset").addEventListener("click",()=>flyTo(WX/2,0.5,1));
 
 document.querySelectorAll("#layerSeg button").forEach(b=>b.addEventListener("click",()=>{
   mode=b.dataset.mode;document.querySelectorAll("#layerSeg button").forEach(o=>o.setAttribute("aria-pressed",o===b?"true":"false"));
   updateLegend();
   if(reshade(low)&&full&&reshade(full))compose();else renderNow();
 }));
-[["optRivers","rivers"],["optCities","cities"],["optGrid","grid"],["optBorders","borders"],["optRoutes","routes"],["optRes","res"]].forEach(([id,k])=>$(id).addEventListener("change",e=>{opt[k]=e.target.checked;if(k==="res"||k==="borders")resLegend();compose();}));
+[["optRivers","rivers"],["optCities","cities"],["optRoads","roads"],["optBld","bld"],["optGrid","grid"],["optGridA","grid"],["optBorders","borders"],["optRoutes","routes"],["optRes","res"]].forEach(([id,k])=>$(id).addEventListener("change",e=>{opt[k]=e.target.checked;if(k==="res"||k==="borders")resLegend();compose();}));
 ["sSea","sScale","sRough","sTemp"].forEach(id=>$(id).addEventListener("input",()=>{
   readParams();renderNow();clearTimeout(regenTimer);regenTimer=setTimeout(regenerate,280);
 }));
 $("seedForm").addEventListener("submit",e=>{e.preventDefault();newSeed($("seed").value);});
 $("randomBtn").addEventListener("click",()=>newSeed(randomSeed()));
-addEventListener("hashchange",()=>{const s=location.hash.slice(1);if(s&&s!==P.seed)newSeed(s);});
+addEventListener("hashchange",()=>{
+  if(location.hash===hashFor())return;const s=parseHash(location.hash.slice(1));if(s){applyKind();newSeed(s);}
+});
+document.querySelectorAll("#kindSeg button").forEach(b=>b.addEventListener("click",()=>{
+  if(P.kind===b.dataset.k)return;P.kind=b.dataset.k;applyKind();newSeed(P.seed);
+}));
+[["aSize","km",Number],["aTheme","theme",String],["aLayout","layout",String]].forEach(([id,k,cv])=>$(id).addEventListener("change",e=>{
+  P[k]=cv(e.target.value);applyKind();newSeed(P.seed);
+}));
 
 function resize(){
   const r=mapEl.getBoundingClientRect();cssW=Math.max(50,r.width);cssH=Math.max(50,r.height);dpr=Math.min(2,devicePixelRatio||1);
@@ -1822,21 +2106,22 @@ new ResizeObserver(resize).observe(mapEl);
 
 /* ---------------- Minecraft export: panel ---------------- */
 const mc={area:"world",busy:false,cancel:false,blob:null,file:"",start:""};
-const MC_SIZES={world:[[1024,512],[2048,1024],[4096,2048]],view:[[512,512],[1024,1024],[2048,2048]]};
+const MC_SIZES={world:[[1024,512],[2048,1024],[4096,2048]],view:[[512,512],[1024,1024],[2048,2048]],arena:[[512,512],[1024,1024],[2048,2048]]};
+const mcTable=()=>MC_SIZES[mc.area==="world"&&isArena()?"arena":mc.area]; // a battle map exports as a square
 const mcFramePx=()=>Math.min(cssW,cssH)*0.72;
 function mcSpec(){
-  const [W,H]=MC_SIZES[mc.area][+$("mcSize").value];
-  if(mc.area==="world")return {W,H,x0:0,y0:0,span:2};
+  const [W,H]=mcTable()[+$("mcSize").value];
+  if(mc.area==="world")return {W,H,x0:0,y0:0,span:WX};
   const span=mcFramePx()*unit();
   return {W,H,x0:view.cx-span/2,y0:view.cy-span/2,span};
 }
 function mcSizes(){
   const sel=$("mcSize"),keep=sel.value||"1";sel.innerHTML="";
-  MC_SIZES[mc.area].forEach(([w,h],n)=>{const op=document.createElement("option");op.value=n;op.textContent=fmtInt(w)+" × "+fmtInt(h);sel.appendChild(op);});
+  mcTable().forEach(([w,h],n)=>{const op=document.createElement("option");op.value=n;op.textContent=fmtInt(w)+" × "+fmtInt(h);sel.appendChild(op);});
   sel.value=keep;
 }
 function mcInfo(){
-  const s=mcSpec(),m=s.span*2e7/s.W;
+  const s=mcSpec(),m=s.span*MPU/s.W;
   const scale=m>=10000?fmtInt(m/1000)+" km":m>=1000?(m/1000).toFixed(1)+" km":m>=10?fmtInt(m)+" m":m.toFixed(1)+" m";
   $("mcInfo").innerHTML="1 block ≈ <b>"+scale+"</b> · "+fmtInt(s.W*s.H/256)+" chunks"+(s.W*s.H>3e6?" · slow on phones":"");
 }
@@ -1902,6 +2187,7 @@ const simOn=()=>ui.tab==="sim"&&!!SIM;
 const simSay=t=>{$("simMsg").textContent=t;$("simMsg").hidden=!t;};
 
 function setTab(t){
+  if(isArena())t="gen"; // a battle map has no history to simulate
   ui.tab=t;
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t?"true":"false"));
   document.querySelectorAll("[data-pane]").forEach(e=>{e.hidden=e.dataset.pane!==t;});
@@ -2185,6 +2471,7 @@ function drawSimUnder(sx,sy,u){
   ctx.imageSmoothingEnabled=true;ctx.drawImage(SIM.terr,sx(0),sy(0),2/u,1/u);
 }
 function drawSimRoutes(sx,sy){
+  if(W0&&W0.kind==="arena"){drawArenaRoads(sx,sy);return;}
   if(ui.tab!=="sim"||!W0)return;
   const S=SIM,net=S?S.net:W0.net,zf=Math.pow(view.zoom,0.3);
   const trace=list=>{ctx.beginPath();for(const s of list){ctx.moveTo(sx(s[0]),sy(s[1]));for(let q=2;q<s.length;q+=2)ctx.lineTo(sx(s[q]),sy(s[q+1]));}ctx.stroke();};
@@ -2262,10 +2549,26 @@ $("tSpeed").addEventListener("click",()=>{if(!SIM)return;SIM.speed=SIM.speed===1
 $("tYear").addEventListener("input",e=>{if(!SIM)return;setYear(+e.target.value);compose();});
 $("tPlay").innerHTML=ICON_PLAY;
 
+
+// battle map roads: cased like the planet's trade roads but quieter, with bridges drawn as grey decks over the water
+function drawArenaRoads(sx,sy){
+  const net=W0.net;if(!opt.roads||!net)return;
+  const zf=Math.pow(view.zoom,0.45),ws=[1,1.3,1.8,2.4];
+  const trace=list=>{ctx.beginPath();for(const s of list){ctx.moveTo(sx(s[0]),sy(s[1]));for(let q=2;q<s.length;q+=2)ctx.lineTo(sx(s[q]),sy(s[q+1]));}ctx.stroke();};
+  if(view.zoom>=2.2){ // town streets, once there is room for them
+    const st=W0.streets,lw=Math.min(9,0.9*zf);ctx.beginPath();
+    for(let q=0;q<st.length;q+=4){ctx.moveTo(sx(st[q]),sy(st[q+1]));ctx.lineTo(sx(st[q+2]),sy(st[q+3]));}
+    ctx.strokeStyle="rgba(10,16,22,.5)";ctx.lineWidth=lw+1.4;ctx.stroke();ctx.strokeStyle="#c9c2ae";ctx.lineWidth=lw;ctx.stroke();
+  }
+  ctx.strokeStyle="rgba(10,16,22,.6)";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*zf)+1.6;trace(net.land[b]);}
+  ctx.lineWidth=Math.min(14,2.6*zf)+2.4;trace(net.sea);
+  ctx.strokeStyle="#d9d2bf";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*zf);trace(net.land[b]);}
+  ctx.strokeStyle="#a9b0b8";ctx.lineWidth=Math.min(14,2.6*zf);trace(net.sea);
+}
 /* ---------------- Boot ---------------- */
-resize();updateLegend();
-const h=location.hash.slice(1);
-newSeed(/^[a-z0-9-]{1,32}$/.test(h)?h:"ember-4");
+resize();
+const h=parseHash(location.hash.slice(1));
+applyKind();newSeed(h||"ember-4");
 let startTab="gen";try{if(localStorage.getItem("worldsmith-tab")==="sim")startTab="sim";}catch(e){}
 setTab(startTab);
 })();

@@ -1,20 +1,21 @@
 /* ---------------- Minecraft export: panel ---------------- */
 const mc={area:"world",busy:false,cancel:false,blob:null,file:"",start:""};
-const MC_SIZES={world:[[1024,512],[2048,1024],[4096,2048]],view:[[512,512],[1024,1024],[2048,2048]]};
+const MC_SIZES={world:[[1024,512],[2048,1024],[4096,2048]],view:[[512,512],[1024,1024],[2048,2048]],arena:[[512,512],[1024,1024],[2048,2048]]};
+const mcTable=()=>MC_SIZES[mc.area==="world"&&isArena()?"arena":mc.area]; // a battle map exports as a square
 const mcFramePx=()=>Math.min(cssW,cssH)*0.72;
 function mcSpec(){
-  const [W,H]=MC_SIZES[mc.area][+$("mcSize").value];
-  if(mc.area==="world")return {W,H,x0:0,y0:0,span:2};
+  const [W,H]=mcTable()[+$("mcSize").value];
+  if(mc.area==="world")return {W,H,x0:0,y0:0,span:WX};
   const span=mcFramePx()*unit();
   return {W,H,x0:view.cx-span/2,y0:view.cy-span/2,span};
 }
 function mcSizes(){
   const sel=$("mcSize"),keep=sel.value||"1";sel.innerHTML="";
-  MC_SIZES[mc.area].forEach(([w,h],n)=>{const op=document.createElement("option");op.value=n;op.textContent=fmtInt(w)+" × "+fmtInt(h);sel.appendChild(op);});
+  mcTable().forEach(([w,h],n)=>{const op=document.createElement("option");op.value=n;op.textContent=fmtInt(w)+" × "+fmtInt(h);sel.appendChild(op);});
   sel.value=keep;
 }
 function mcInfo(){
-  const s=mcSpec(),m=s.span*2e7/s.W;
+  const s=mcSpec(),m=s.span*MPU/s.W;
   const scale=m>=10000?fmtInt(m/1000)+" km":m>=1000?(m/1000).toFixed(1)+" km":m>=10?fmtInt(m)+" m":m.toFixed(1)+" m";
   $("mcInfo").innerHTML="1 block ≈ <b>"+scale+"</b> · "+fmtInt(s.W*s.H/256)+" chunks"+(s.W*s.H>3e6?" · slow on phones":"");
 }

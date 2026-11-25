@@ -1,8 +1,15 @@
 # Worldsmith
 
 Procedural world generator that runs as one self-contained web page, published as a claude.ai artifact.
-It has two workspaces: **Generation** (terrain, climate, rivers, settlements, Minecraft Bedrock export) and
-**Simulation** (trade routes, factions, 300 years of borders, wars and pacts on a timeline).
+It makes two kinds of map (`P.kind`):
+
+- **Planet** (`"world"`): a whole world. Two workspaces: **Generation** (terrain, climate, rivers,
+  settlements, Minecraft Bedrock export) and **Simulation** (trade routes, factions, 300 years of borders,
+  wars and pacts on a timeline).
+- **Battle map** (`"arena"`): a square map 4, 6 or 8 km across in the style of battle-royale maps, with a
+  climate theme (temperate, snow, desert, jungle), a layout (island, coastal, inland), named places (cities,
+  towns, villages, compounds such as a military base or quarry), buildings, town streets, roads and bridges.
+  Generation tab only; the Simulation tab is hidden.
 
 The owner writes in Spanish: answer in Spanish. The page's interface text is in English; keep it that way
 unless asked.
@@ -11,7 +18,7 @@ unless asked.
 
 ```bash
 npm run build   # src/ -> dist/worldsmith.html (to publish) and dist/preview.html (to open locally)
-npm test        # engine tests in Node: history replay, balance on 16 worlds, routes, Minecraft export (~35 s)
+npm test        # engine tests in Node: history replay, balance on 16 worlds, routes, battle maps, Minecraft export (~50 s)
 npm run check   # fails if dist/worldsmith.html is out of date with src/
 ```
 
@@ -35,24 +42,33 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
 | File | Contents |
 |---|---|
 | `01-noise.js` | seeded random (`mulberry32`), simplex noise, `fbm` |
-| `02-world.js` | parameters `P`, `elev`, `meters`, `climate`, the 18 biomes `B` |
+| `02-world.js` | parameters `P`, map extent `WX`/`MPU`, `elev`, `meters`, `climate` (each dispatches to a planet or a battle-map version), the 18 biomes `B`, battle-map `THEMES` and `LAYOUTS` |
 | `03-language.js` | name generator per world |
-| `04-drainage.js` | `setSeed`, `analyseWorld`: 560×280 analysis grid, priority-flood drainage, rivers, settlements; fills `W0` |
-| `05-routes.js` | `CostField` (terrain friction), `MinHeap`, A* `Pathfinder`, cooperative scheduler `sched`, `routeTask` |
+| `04-drainage.js` | `setKind` (grid and extent per map kind), `setSeed`, `analyseWorld`: analysis grid (560×280 planet, 400×400 battle map), priority-flood drainage, rivers, settlements; `arenaPlaces`: battle-map places, buildings and streets; fills `W0` |
+| `05-routes.js` | `CostField` (terrain friction; on battle maps water costs `BRIDGE` per cell and grade matters), `MinHeap`, A* `Pathfinder`, cooperative scheduler `sched`, `routeTask` |
 | `06-simulation.js` | resources, faction spread, the history engine (wars, pacts), lookups such as `stateAt`, procedural lore |
 | `07-minecraft-export.js` | `MCX.build`: writes a Bedrock world (level.dat + LevelDB log) as a zip |
-| `08-rendering.js` | map canvas: progressive rendering, overlays |
+| `08-rendering.js` | map canvas: progressive rendering, overlays; battle-map lettered grid, buildings, place labels |
 | `09-format.js` | number and coordinate formatting |
-| `10-panel.js` | terrain readout, world stats, legend, sliders, `regenerate`, `newSeed` |
+| `10-panel.js` | terrain readout, world stats, legend, sliders, `regenerate`, `newSeed`, map kind (`applyKind`, links via `hashFor`/`parseHash`) |
 | `11-interaction.js` | pan, zoom, pinch, keyboard, layer buttons |
 | `12-minecraft-panel.js` | the export section of the Generation tab |
-| `13-sim-ui.js` | tabs, selection and inspector, timeline playback, simulation layers drawing |
+| `13-sim-ui.js` | tabs, selection and inspector, timeline playback, simulation layers drawing, battle-map roads |
 | `14-boot.js` | start-up |
 
 ## Data worth knowing
 
-- `W0` (per world): `cities`, river `buckets`, analysis fields `f` (`hm` elevation, `bio`, `isR`, `acc`,
-  `recv`…), `routes` (cell paths), `costField`, `net` (drawable road polylines).
+- Geometry: planet x ∈ [0,2], y ∈ [0,1], 2 units = 40,000 km; battle map x, y ∈ [0,1], 1 unit = `P.km` km.
+  Use `WX` (map width in units), `MPU` (metres per unit) and `CELL_M` (metres per analysis cell), never a
+  literal 2 or 40,000; `GW`/`GH`/`GN` change with the kind (call `setKind()` after changing `P.kind`/`P.km`).
+- `W0` (per world): `kind`, `cities`, river `buckets`, analysis fields `f` (`hm` elevation, `bio`, `isR`, `acc`,
+  `recv`…), `routes` (cell paths), `costField`, `net` (drawable road polylines, `km`, `bridges`). Battle maps
+  add `bld` (buildings as x, y, w, h, angle ×5 in world units) and `streets` (x1, y1, x2, y2 ×4); their
+  `cities` carry `cls` (city/town/village/site), `kind` ("Town", "Quarry"…), `r` (radius m) and `pop`
+  (number of buildings). Battle-map roads are built in the Generation tab by `regenerate`.
+- Links: `#seed` is a planet, `#seed@a8.snow.island` a battle map (size, theme, layout). The history engine
+  in `06` is a function called `history`, which shadows `window.history` inside the page: write
+  `window.history`.
 - `SIM` (per simulation run), built in the background by `simTask` → `history`:
   - ownership log: `chCell`/`chTo` (every change of owner, in order), `yearStart` (where each year starts in
     the log) and `keys` (a full ownership snapshot every `KEY` years). `stateAt(y)` = nearest snapshot +
@@ -65,6 +81,11 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   heavy must follow the same pattern (`yield` often, check `gen !== simGen` to stop when the world changes).
 
 ## Decisions the owner has made
+
+- Battle maps (asked for by the owner, modelled on 8×8 km battle-royale maps): original names and layouts,
+  sizes 4/6/8 km, about 2.6 named places per km of width, gentle lowland for towns and hills that steepen
+  only as they rise, one or two broad rivers crossing many maps so roads need bridges. No faction simulation
+  on battle maps.
 
 - Keep the balance of power: wars move frontiers but do not wipe factions out or let one empire dominate.
   Capitals cannot fall. The tests fail if a faction vanishes or ends above 40% of the land (checked on 16 worlds).
@@ -88,6 +109,8 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   without war, no faction above 36%. The default seed (`ember-4`) has 11 wars and 5 pacts.
 - The Minecraft export has been checked with `tools/verify_mcworld.py` but never opened inside Minecraft.
 - The page has been tested in desktop and phone-sized Chrome, not on a real phone.
+- Battle maps export to Minecraft with the same terrain code as planets (places become the small stone
+  structures planets get); their buildings, streets and roads are not yet exported as blocks.
 
 ## Publishing
 

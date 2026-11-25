@@ -2,20 +2,25 @@
 // Friction per biome (index into B): how hard a kilometre is to cross, relative to open grassland.
 const FRICTION=[1,0.85,0.7,9,10,3,2.2,1.3,1,1.6,2.4,2.6,1.2,1.8,3.2,0.9,4.5,9];
 const DX8=[-1,0,1,-1,1,-1,0,1],DY8=[-1,-1,-1,0,0,1,1,1],DIAG=[1,0,1,0,0,1,0,1];
-const PORT=12,HARBOUR=4,FORD=0.8,ROAD=0.5,LANE=0.8,MIN_COST=0.24; // MIN_COST: cheapest possible step per cell, keeps the A* heuristic admissible
+const PORT=12,HARBOUR=4,FORD=0.8,ROAD=0.5,LANE=0.8,MIN_COST=0.24,BRIDGE=22; // MIN_COST: cheapest possible step per cell, keeps the A* heuristic admissible
 
 // Cost of one step between neighbouring analysis cells. Slope and rivers depend on direction, so it is computed per step.
 class CostField{
   constructor(f){
     this.f=f;this.base=new Float32Array(GN);this.road=new Float32Array(GN).fill(1);this.city=new Uint8Array(GN);
     for(let k=0;k<GN;k++)this.base[k]=FRICTION[f.bio[k]];
+    // on a battle map water is crossed by bridges (dear per cell, so only narrow water is bridged) and a 12% grade
+    // doubles the effort; on a planet ships load at ports and 600 m of climb between cells doubles it
+    this.arena=isArena();this.grade=this.arena?CELL_M*0.12:600;
   }
   step(a,b,diag){
     const f=this.f,d=diag?Math.SQRT2:1,sa=f.hm[a]<0,sb=f.hm[b]<0;
+    const rd=Math.min(this.road[a],this.road[b]);
+    if(this.arena&&(sa||sb))return d*BRIDGE*rd;
     if(sa!==sb)return d+((sa?this.city[b]:this.city[a])?HARBOUR:PORT); // loading or unloading a ship; towns have harbours
-    const rd=Math.min(this.road[a],this.road[b]),flat=d*0.5*(this.base[a]+this.base[b]);
+    const flat=d*0.5*(this.base[a]+this.base[b]);
     if(sa)return flat*rd;
-    const dh=(f.hm[b]-f.hm[a])/(600*d);
+    const dh=(f.hm[b]-f.hm[a])/(this.grade*d);
     let c=flat*(1+dh*dh); // a 600 m climb between cells doubles the effort
     if(f.recv[a]===b||f.recv[b]===a){if(f.isR[a]&&f.isR[b])c*=0.55;} // following a river valley
     else if(f.isR[b])c+=FORD*(0.5+Math.log2(f.acc[b]/f.thr));       // fording: wider rivers cost more
@@ -99,14 +104,14 @@ const segKey=(a,b)=>a<b?a*GN+b:b*GN+a;
 // cell centre, nudged by a fixed per-cell offset so roads do not look gridded; towns stay exact
 function cellPoint(k,exact){
   let jx=0,jy=0;if(!exact){const h=Math.imul(k,0x9E3779B1)>>>0;jx=((h&1023)/1023-0.5)*0.5;jy=((h>>>10&1023)/1023-0.5)*0.5;}
-  return [(k%GW+0.5+jx)*2/GW,(((k/GW)|0)+0.5+jy)/GH];
+  return [(k%GW+0.5+jx)*WX/GW,(((k/GW)|0)+0.5+jy)/GH];
 }
 // Turn the set of used cell-to-cell segments into drawable polylines: chains between junctions, smoothed once each.
 function traceNetwork(seg,cost){
-  const f=cost.f,adj=new Map(),cw=2/GW,ch=1/GH;
+  const f=cost.f,adj=new Map();
   const link=(a,b)=>{let l=adj.get(a);if(!l){l=[];adj.set(a,l);}l.push(b);};
   let maxT=0,km=0;
-  for(const [sk,t] of seg){const a=Math.floor(sk/GN),b=sk-a*GN;link(a,b);link(b,a);if(t>maxT)maxT=t;km+=(Math.abs(a-b)===1||Math.abs(a-b)===GW?1:Math.SQRT2)*40000/GW;}
+  for(const [sk,t] of seg){const a=Math.floor(sk/GN),b=sk-a*GN;link(a,b);link(b,a);if(t>maxT)maxT=t;km+=(Math.abs(a-b)===1||Math.abs(a-b)===GW?1:Math.SQRT2)*CELL_M/1000;}
   const isNode=k=>{
     const l=adj.get(k);if(l.length!==2||cost.city[k])return true;
     const s=f.hm[k]<0;return (f.hm[l[0]]<0)!==s||(f.hm[l[1]]<0)!==s||seg.get(segKey(k,l[0]))!==seg.get(segKey(k,l[1]));
@@ -133,7 +138,13 @@ function traceNetwork(seg,cost){
       out.push(s);
     }
   }
-  return {land,sea,km};
+  // bridges (or sea crossings): connected stretches of water the network crosses
+  let bridges=0;const seen=new Set();
+  for(const k of adj.keys()){
+    if(f.hm[k]>=0||seen.has(k))continue;bridges++;const st=[k];seen.add(k);
+    while(st.length){const c=st.pop();for(const n of adj.get(c))if(f.hm[n]<0&&!seen.has(n)){seen.add(n);st.push(n);}}
+  }
+  return {land,sea,km,bridges};
 }
 
 // The network grows one route at a time, strongest trade links first. Every finished route makes its own ground
