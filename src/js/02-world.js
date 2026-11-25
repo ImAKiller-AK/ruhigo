@@ -83,14 +83,15 @@ function elevArena(x,y,oct){
     for(let i=0;i<ro;i++){const X=i<2?px:x*S,Y=i<2?py:y*S;r+=(1-Math.abs(N.r(X*f+i*3.1,Y*f-i*1.7)))*a;t+=a;a*=0.5;f*=2.1;}
     e+=hl*(r/t-0.5)*0.08;
   }
-  e-=0.1*smooth(0.48,0.7,N.c(x*3.1+11+wx*0.9,y*3.1-4+wy*0.9)+0.12*N.t(x*9,y*9))*(1-hl); // a few lowland lakes of irregular shape
+  const dry=P.theme==="desert"; // deserts hold little water: few lakes, at most one river
+  e-=0.1*smooth(dry?0.66:0.48,dry?0.82:0.7,N.c(x*3.1+11+wx*0.9,y*3.1-4+wy*0.9)+0.12*N.t(x*9,y*9))*(1-hl); // a few lowland lakes of irregular shape
   // layout: how much of the map is playable land and where the sea comes in
   const edge=fbm(N.c,x*2.2+9.2+wx*0.5,y*2.2+wy*0.5,5,0.6)*0.22; // ragged shores: bays, capes and offshore islets
   if(P.layout==="island"){const dx=(x-0.5)*2,dy=(y-0.5)*2;e-=0.5*smooth(0.86,1.1,Math.pow(dx**4+dy**4,0.25)+edge);}
   else if(P.layout==="coast"){const c=Math.cos(N.side),sn=Math.sin(N.side),d=(x-0.5)*c+(y-0.5)*sn;e-=0.5*smooth(0.24,0.5,d+edge);}
   else e+=0.035;
   // one or two broad rivers winding right across the map: the kind of water that forces bridges
-  for(let c=0;c<N.chan;c++){
+  for(let c=0,nc=dry?(N.chan===2?1:0):N.chan;c<nc;c++){
     const th=N.side+1.3+c*1.9,ct=Math.cos(th),st=Math.sin(th),u=(x-0.5)*ct+(y-0.5)*st,v=-(x-0.5)*st+(y-0.5)*ct;
     const mid=(c?-0.18:0.08)+0.16*N.m(u*2.1+c*9.3,4.7)+0.035*N.m(u*6.3,c*5.1+1.9);
     const q=Math.abs(v-mid),w=(c?0.0042:0.0058)*8/P.km; // ~130–180 m of water, whatever the map size

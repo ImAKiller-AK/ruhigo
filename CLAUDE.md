@@ -101,6 +101,9 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   Desert maps: hills 1.5× higher than other climates, red rock banded by strata on mesas and slopes,
   rippled dunes in some basins, pale dry washes (more drainage lines, read smoothly between cells), scrub
   thicker along the washes, green at lake shores (oases). No farmland on snow or desert maps.
+  Roads are coloured per climate so they stand out (dark-edged on sand, grey on snow); the ring road is
+  measured from the open sea and the map edge only, so lakes and rivers do not bend it.
+  Deserts hold little water: few lakes and at most one broad river (on some maps none).
   `W0.f.sea` marks open-sea water (reaches the map edge) as opposed to lakes. No faction simulation and no Minecraft export on battle maps: the owner wants them as
   pure design, as close as possible to the look of battle-royale maps.
 - Battle-map look ("Aerial" layer): an aerial-photo style, not flat biome colours. Muted ground per climate,

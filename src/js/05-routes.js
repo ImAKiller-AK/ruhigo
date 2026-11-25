@@ -194,10 +194,11 @@ function* routeTask(gen,onUpdate){
     onUpdate(pairs.length,pairs.length,W0.net?W0.net.km:0,true);
   }
 }
-// ring road waypoints: around the map centre, the outermost land at a set distance from water or the map edge
+// ring road waypoints: around the map centre, the outermost land at a set distance from the open sea or the map
+// edge (lakes and rivers do not count, so the ring stays a clean loop instead of bending inland around them)
 function ringWaypoints(f){
   const d=new Int16Array(GN).fill(-1),q=new Int32Array(GN);let h=0,t=0;
-  for(let k=0;k<GN;k++){const i=k%GW,j=(k/GW)|0;if(f.hm[k]<0||i===0||j===0||i===GW-1||j===GH-1){d[k]=0;q[t++]=k;}}
+  for(let k=0;k<GN;k++){const i=k%GW,j=(k/GW)|0;if((f.sea?f.sea[k]:f.hm[k]<0)||i===0||j===0||i===GW-1||j===GH-1){d[k]=0;q[t++]=k;}}
   while(h<t){const k=q[h++],i=k%GW,j=(k/GW)|0;for(const n of [i>0?k-1:-1,i<GW-1?k+1:-1,j>0?k-GW:-1,j<GH-1?k+GW:-1])if(n>=0&&d[n]<0){d[n]=d[k]+1;q[t++]=n;}}
   const D=Math.round(420/CELL_M),pts=[];
   for(let a=0;a<16;a++){

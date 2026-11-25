@@ -377,7 +377,7 @@ function drawArenaRoads(sx,sy){
   const zf=Math.pow(view.zoom,0.45),ws=[1,1.3,1.8,2.4];
   const trace=list=>{ctx.beginPath();for(const s of list){ctx.moveTo(sx(s[0]),sy(s[1]));for(let q=2;q<s.length;q+=2)ctx.lineTo(sx(s[q]),sy(s[q+1]));}ctx.stroke();};
   if(W0.tracks.length){ // dirt tracks: thin, pale and a little broken, under everything else
-    ctx.strokeStyle="rgba(206,198,172,.62)";ctx.lineWidth=Math.min(4,Math.max(0.9,0.75*zf));trace(W0.tracks);
+    ctx.strokeStyle=P.theme==="desert"?"rgba(120,88,58,.55)":P.theme==="snow"?"rgba(120,126,134,.55)":"rgba(206,198,172,.62)";ctx.lineWidth=Math.min(4,Math.max(0.9,0.75*zf));trace(W0.tracks);
   }
   if(view.zoom>=2.2){ // town streets, once there is room for them
     const st=W0.streets,lw=Math.min(9,0.9*zf);ctx.beginPath();
@@ -385,8 +385,10 @@ function drawArenaRoads(sx,sy){
     ctx.strokeStyle="rgba(40,36,28,.3)";ctx.lineWidth=lw+1;ctx.stroke();ctx.strokeStyle="rgba(190,184,168,.7)";ctx.lineWidth=lw*0.85;ctx.stroke();
   }
   // pale tarmac with only a faint shadow, as roads look from the air; bridges are grey decks with a dark edge
-  ctx.strokeStyle="rgba(30,28,22,.28)";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*1.15*zf)+1.2;trace(net.land[b]);}
+  // per climate so roads always stand out: a darker edge on pale sand, ploughed grey tarmac on snow
+  const [edge,grow,fill]=P.theme==="desert"?["rgba(74,50,30,.55)",1.8,"rgba(236,230,218,.96)"]:P.theme==="snow"?["rgba(36,42,50,.5)",1.6,"rgba(140,146,154,.96)"]:["rgba(30,28,22,.28)",1.2,"rgba(226,222,210,.93)"];
+  ctx.strokeStyle=edge;for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*1.15*zf)+grow;trace(net.land[b]);}
   ctx.strokeStyle="rgba(20,24,28,.7)";ctx.lineWidth=Math.min(14,2.4*zf)+2.2;trace(net.sea);
-  ctx.strokeStyle="rgba(226,222,210,.93)";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*1.15*zf);trace(net.land[b]);}
+  ctx.strokeStyle=fill;for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*1.15*zf);trace(net.land[b]);}
   ctx.strokeStyle="#9aa1a8";ctx.lineWidth=Math.min(14,2.4*zf);trace(net.sea);
 }
