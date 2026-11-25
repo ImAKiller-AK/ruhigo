@@ -37,6 +37,12 @@ function updatePanel(){
 }
 function updateLegend(){
   const el=$("legend");
+  if(mode==="biome"&&isArena()){ // the aerial look: what each colour means on this climate
+    const th=AERIAL[P.theme],rows=[["Open ground",th.open],["Dry ground",th.dry],["Woods",th.forest],["Farmland",th.field[0]],["Bare rock",th.rock],["Beach",th.beach],["Shallow water",[72,164,160]],["Deep water",[14,40,64]],["Buildings",[238,227,191]],["Roads",[226,222,210]]];
+    $("legendLabel").textContent="Aerial view · "+THEMES[P.theme].name.toLowerCase();
+    el.innerHTML='<div class="legend">'+rows.map(r=>'<div><span class="sw" style="background:'+rgb(r[1])+'"></span>'+r[0]+'</div>').join("")+'</div>';
+    return;
+  }
   if(mode==="biome"){
     $("legendLabel").textContent="Biomes";
     el.innerHTML='<div class="legend">'+B.map(b=>'<div><span class="sw" style="background:'+rgb(b[1])+'"></span>'+b[0]+'</div>').join("")+'</div>';
@@ -76,6 +82,12 @@ function randomSeed(){const w=makeLanguage(Math.random)(2).toLowerCase();return 
 
 /* ---- map kind: planet or battle map ---- */
 // The link names the map: "#seed" for a planet, "#seed@a8.snow.island" for an 8 km snowy island battle map.
+// an element shows when it belongs to the open tab (data-pane) and to the current kind of map (data-kind)
+function showPanes(){
+  document.querySelectorAll("[data-pane],[data-kind]").forEach(e=>{
+    e.hidden=(e.dataset.pane&&e.dataset.pane!==ui.tab)||(e.dataset.kind&&e.dataset.kind!==P.kind)||false;
+  });
+}
 const hashFor=()=>"#"+P.seed+(isArena()?"@a"+P.km+"."+P.theme+"."+P.layout:"");
 function parseHash(h){ // sets the map kind and options from a link; returns the seed, or "" when the link is not one of ours
   const m=/^([a-z0-9-]{1,32})(?:@a(4|6|8)\.(temperate|snow|desert|jungle)\.(island|coast|inland))?$/.exec(h||"");
@@ -85,7 +97,7 @@ function parseHash(h){ // sets the map kind and options from a link; returns the
 }
 function applyKind(){
   setKind();const a=isArena();
-  document.querySelectorAll("[data-kind]").forEach(e=>{e.hidden=e.dataset.kind!==P.kind;});
+  showPanes();$("layerSeg").querySelector('[data-mode="biome"]').textContent=a?"Aerial":"Biomes";
   document.querySelectorAll("#kindSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===P.kind?"true":"false"));
   $("optGrid").checked=$("optGridA").checked=opt.grid;$("aSize").value=P.km;$("aTheme").value=P.theme;$("aLayout").value=P.layout;
   document.querySelector('.tabs [data-tab="sim"]').hidden=a;

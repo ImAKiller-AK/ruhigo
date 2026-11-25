@@ -184,7 +184,7 @@ function arenaPlaces(f){
       const L=c.cls==="city"?30:c.cls==="town"?33:42,dens=c.cls==="village"?0.5:0.86,big=c.cls==="city"?1.35:1;
       const offs=c.cls==="city"?[0,-3.5*L,3.5*L]:c.cls==="town"?[0,2.5*L]:[0]; // street lines, the same both ways
       for(const o of offs){
-        const ext=Math.sqrt(Math.max(0,c.r*c.r-o*o))*(c.cls==="village"?0.8:1.05);
+        const ext=Math.sqrt(Math.max(0,c.r*c.r-o*o))*(c.cls==="village"?0.7:0.9);
         street(c.x+(o*-sa-ext*ca)*M,c.y+(o*ca-ext*sa)*M,c.x+(o*-sa+ext*ca)*M,c.y+(o*ca+ext*sa)*M);
         street(c.x+(o*ca+ext*sa)*M,c.y+(o*sa-ext*ca)*M,c.x+(o*ca-ext*sa)*M,c.y+(o*sa+ext*ca)*M);
       }
@@ -195,6 +195,19 @@ function arenaPlaces(f){
       }
     }
     c.bld=[b0/5,out.length/5];c.pop=(out.length-b0)/5;
+  }
+  // farmsteads: one to four buildings scattered over gentle open country, the way such maps are dotted with houses
+  const fr=mulberry32(hs^0x2f6b1d3c),nFarm=Math.round(P.km*P.km*2),clear=0.16/P.km*WX;
+  for(let t=0,made=0;t<nFarm*25&&made<nFarm;t++){
+    const x=0.03+fr()*0.94*WX,y=0.03+fr()*0.94,k=Math.floor(y*GH)*GW+Math.floor(x/cw);
+    if(hm[k]<5||isR[k]||slope(k)>0.16||waterWithin(k,2,1))continue;
+    if(picks.some(c=>Math.hypot(c.x-x,c.y-y)<c.r*M+clear))continue;
+    const ang=fr()*Math.PI/2,ca=Math.cos(ang),sa=Math.sin(ang),n=1+Math.floor(fr()*fr()*4);
+    for(let q=0;q<n;q++){
+      const u=q?(fr()-0.5)*40:0,v=q?(fr()-0.5)*40:0,px=x+(u*ca-v*sa)*M,py=y+(u*sa+v*ca)*M;
+      if(ok(px,py))out.push(px,py,(8+fr()*9)*M,(7+fr()*6)*M,ang);
+    }
+    made++;
   }
   return {cities:picks,bld:Float32Array.from(out),streets:Float32Array.from(streets)};
 }

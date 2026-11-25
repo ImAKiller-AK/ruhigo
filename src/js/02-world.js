@@ -92,7 +92,7 @@ function elevArena(x,y,oct){
     const th=N.side+1.3+c*1.9,ct=Math.cos(th),st=Math.sin(th),u=(x-0.5)*ct+(y-0.5)*st,v=-(x-0.5)*st+(y-0.5)*ct;
     const mid=(c?-0.18:0.08)+0.16*N.m(u*2.1+c*9.3,4.7)+0.035*N.m(u*6.3,c*5.1+1.9);
     const q=Math.abs(v-mid),w=c?0.009:0.013;
-    if(q<w*3)e-=0.3*smooth(w*3,w*0.8,q);
+    if(q<w*3)e-=0.17*smooth(w*3,w*0.8,q);
   }
   return e;
 }

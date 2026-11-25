@@ -1,7 +1,7 @@
 /* ---------------- Minecraft export: panel ---------------- */
 const mc={area:"world",busy:false,cancel:false,blob:null,file:"",start:""};
-const MC_SIZES={world:[[1024,512],[2048,1024],[4096,2048]],view:[[512,512],[1024,1024],[2048,2048]],arena:[[512,512],[1024,1024],[2048,2048]]};
-const mcTable=()=>MC_SIZES[mc.area==="world"&&isArena()?"arena":mc.area]; // a battle map exports as a square
+const MC_SIZES={world:[[1024,512],[2048,1024],[4096,2048]],view:[[512,512],[1024,1024],[2048,2048]]};
+const mcTable=()=>MC_SIZES[mc.area]; // planets only: battle maps are for design and have no export
 const mcFramePx=()=>Math.min(cssW,cssH)*0.72;
 function mcSpec(){
   const [W,H]=mcTable()[+$("mcSize").value];

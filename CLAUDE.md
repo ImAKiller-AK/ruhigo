@@ -9,7 +9,7 @@ It makes two kinds of map (`P.kind`):
 - **Battle map** (`"arena"`): a square map 4, 6 or 8 km across in the style of battle-royale maps, with a
   climate theme (temperate, snow, desert, jungle), a layout (island, coastal, inland), named places (cities,
   towns, villages, compounds such as a military base or quarry), buildings, town streets, roads and bridges.
-  Generation tab only; the Simulation tab is hidden.
+  Generation tab only; the Simulation tab and the Minecraft export are hidden (battle maps are for design).
 
 The owner writes in Spanish: answer in Spanish. The page's interface text is in English; keep it that way
 unless asked.
@@ -48,7 +48,7 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
 | `05-routes.js` | `CostField` (terrain friction; on battle maps water costs `BRIDGE` per cell and grade matters), `MinHeap`, A* `Pathfinder`, cooperative scheduler `sched`, `routeTask` |
 | `06-simulation.js` | resources, faction spread, the history engine (wars, pacts), lookups such as `stateAt`, procedural lore |
 | `07-minecraft-export.js` | `MCX.build`: writes a Bedrock world (level.dat + LevelDB log) as a zip |
-| `08-rendering.js` | map canvas: progressive rendering, overlays; battle-map lettered grid, buildings, place labels |
+| `08-rendering.js` | map canvas: progressive rendering, overlays; battle maps: `aerial` colouring (`AERIAL` palettes), lettered grid, buildings, place labels |
 | `09-format.js` | number and coordinate formatting |
 | `10-panel.js` | terrain readout, world stats, legend, sliders, `regenerate`, `newSeed`, map kind (`applyKind`, links via `hashFor`/`parseHash`) |
 | `11-interaction.js` | pan, zoom, pinch, keyboard, layer buttons |
@@ -84,8 +84,13 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
 
 - Battle maps (asked for by the owner, modelled on 8×8 km battle-royale maps): original names and layouts,
   sizes 4/6/8 km, about 2.6 named places per km of width, gentle lowland for towns and hills that steepen
-  only as they rise, one or two broad rivers crossing many maps so roads need bridges. No faction simulation
-  on battle maps.
+  only as they rise, one or two broad rivers crossing many maps so roads need bridges, farmsteads scattered
+  over open country. No faction simulation and no Minecraft export on battle maps: the owner wants them as
+  pure design, as close as possible to the look of battle-royale maps.
+- Battle-map look ("Aerial" layer): an aerial-photo style, not flat biome colours. Muted ground per climate,
+  woods, farmland parcels, bare rock on steep slopes, turquoise shallows and slate deep water, texture laid
+  in world space so it holds still while panning; pale roads with a faint shadow, grey bridges, cream
+  buildings, white place names with a soft dark halo and no markers. Names and layouts stay original.
 
 - Keep the balance of power: wars move frontiers but do not wipe factions out or let one empire dominate.
   Capitals cannot fall. The tests fail if a faction vanishes or ends above 40% of the land (checked on 16 worlds).
@@ -109,8 +114,8 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   without war, no faction above 36%. The default seed (`ember-4`) has 11 wars and 5 pacts.
 - The Minecraft export has been checked with `tools/verify_mcworld.py` but never opened inside Minecraft.
 - The page has been tested in desktop and phone-sized Chrome, not on a real phone.
-- Battle maps export to Minecraft with the same terrain code as planets (places become the small stone
-  structures planets get); their buildings, streets and roads are not yet exported as blocks.
+- Battle maps have been compared by eye with reference maps on desktop and phone-sized Chrome; dirt tracks
+  between farmsteads and a ring road are ideas not yet done.
 
 ## Publishing
 

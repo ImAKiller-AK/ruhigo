@@ -52,6 +52,14 @@ function shadeRow(j,py){
     if(sea)f=1+(f-1)*0.5;
     f=f<0.35?0.35:f>1.55?1.55:f;
     const T=ts[k],R=rs[k];
+    if(ar&&mode==="biome"){ // battle maps: an aerial-photo look instead of flat biome colours
+      const s0=Math.hypot(hR-hL,hD-hU)/(2*mpp);
+      aerial(j.cx+(px+0.5-W/2)*j.U,j.cy+(py+0.5-H/2)*j.U,h,R,s0,top);
+      f=1+(f-1)*(sea?0.25:snow?0.8:0.62);
+      if(snow&&!sea&&f<1){col[2]+=(1-f)*40;} // snow in shadow turns blue
+      const r=col[0]*f,gg=col[1]*f,b=col[2]*f;
+      d[o]=r>255?255:r;d[o+1]=gg>255?255:gg;d[o+2]=b>255?255:b;continue;
+    }
     if(mode==="biome"){
       if(sea){if(T<-9){col[0]=212;col[1]=224;col[2]=232;}else ramp(RAMPS.oceanB,ar?h*45:h);}
       else{
@@ -130,11 +138,11 @@ function drawOverlay(){
     for(const [t,x,y] of labels)if(x>0&&x<cssW-30&&y>12&&y<cssH-30)ctx.fillText(t,x,y);
   }
   drawSimUnder(sx,sy,u);
-  if(opt.rivers&&W0){
+  if(opt.rivers&&W0){const arR=W0.kind==="arena";
     const zf=Math.pow(view.zoom,0.42),widths=[0.8,1.1,1.5,2,2.6,3.3];
-    ctx.strokeStyle=mode==="biome"||mode==="relief"?"rgba(58,118,166,.95)":"rgba(16,32,56,.75)";
+    ctx.strokeStyle=arR&&mode==="biome"?"rgba(52,112,122,.8)":mode==="biome"||mode==="relief"?"rgba(58,118,166,.95)":"rgba(16,32,56,.75)";
     for(let b=0;b<6;b++){
-      const a=W0.buckets[b];if(!a.length)continue;ctx.lineWidth=Math.min(14,widths[b]*zf);ctx.beginPath();
+      const a=W0.buckets[b];if(!a.length)continue;ctx.lineWidth=arR?Math.min(7,widths[b]*0.6*zf):Math.min(14,widths[b]*zf);ctx.beginPath();
       for(let q=0;q<a.length;q+=4){
         const x1=sx(a[q]),y1=sy(a[q+1]),x2=sx(a[q+2]),y2=sy(a[q+3]);
         if((x1<-20&&x2<-20)||(x1>cssW+20&&x2>cssW+20)||(y1<-20&&y2<-20)||(y1>cssH+20&&y2>cssH+20))continue;
@@ -154,12 +162,12 @@ function drawOverlay(){
       ctx.lineWidth=3.5;ctx.strokeStyle="rgba(10,16,22,.82)";ctx.strokeText(text,bx,y+4);ctx.fillStyle=color;ctx.fillText(text,bx,y+4);return true;
     };
     const pk=W0.peak,px=sx(pk.x),py=sy(pk.y);
-    if(px>-20&&px<cssW+20&&py>-20&&py<cssH+20){
+    if(W0.kind!=="arena"&&px>-20&&px<cssW+20&&py>-20&&py<cssH+20){
       ctx.fillStyle="#e9e3d3";ctx.strokeStyle="rgba(10,16,22,.85)";ctx.lineWidth=1.5;
       ctx.beginPath();ctx.moveTo(px,py-6);ctx.lineTo(px+5,py+3);ctx.lineTo(px-5,py+3);ctx.closePath();ctx.stroke();ctx.fill();
       label(peakName+" "+fmtInt(pk.h)+" m",px,py,"italic 500 11px Inter, sans-serif","#e9e3d3");
     }
-    if(W0.kind==="arena")arenaLabels(sx,sy,label);
+    if(W0.kind==="arena")arenaLabels(sx,sy);
     else W0.cities.forEach((c,i)=>{
       const x=sx(c.x),y=sy(c.y);if(x<-40||x>cssW+40||y<-20||y>cssH+20)return;
       if(!c.cap&&view.zoom<1.6&&i>9)return;
@@ -170,7 +178,7 @@ function drawOverlay(){
     });
   }
   drawSimOver(sx,sy);
-  if(mc.area==="view"){ // the square a Minecraft export will cover
+  if(mc.area==="view"&&!isArena()){ // the square a Minecraft export will cover
     const s=mcFramePx(),x=(cssW-s)/2,y=(cssH-s)/2;
     ctx.setLineDash([7,5]);ctx.lineWidth=3.5;ctx.strokeStyle="rgba(10,16,22,.75)";ctx.strokeRect(x,y,s,s);
     ctx.lineWidth=1.5;ctx.strokeStyle="#d9a548";ctx.strokeRect(x,y,s,s);ctx.setLineDash([]);
@@ -208,22 +216,77 @@ function drawArenaGrid(sx,sy,u){
 // buildings: pale footprints, drawn as soon as they are a pixel or more across
 function drawBuildings(sx,sy,u){
   const b=W0.bld,px=12/(u*MPU);if(px<0.6)return;
-  ctx.fillStyle=px<2?"rgba(236,222,170,.85)":"#e9dba6";ctx.strokeStyle="rgba(10,16,22,.75)";ctx.lineWidth=1;
+  ctx.fillStyle=px<2?"rgba(246,236,196,.95)":"#eee3bf";ctx.strokeStyle="rgba(10,16,22,.75)";ctx.lineWidth=1;
+  if(px>=3){ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=Math.min(6,px*0.25);ctx.shadowOffsetX=ctx.shadowOffsetY=Math.min(4,px*0.15);}
   const outline=px>=3;ctx.beginPath();
   for(let q=0;q<b.length;q+=5){
     const x=sx(b[q]),y=sy(b[q+1]);if(x<-40||x>cssW+40||y<-40||y>cssH+40)continue;
     const w=Math.max(1,b[q+2]/u),h=Math.max(1,b[q+3]/u),a=b[q+4],c=Math.cos(a)/2,s=Math.sin(a)/2;
     ctx.moveTo(x-w*c+h*s,y-w*s-h*c);ctx.lineTo(x+w*c+h*s,y+w*s-h*c);ctx.lineTo(x+w*c-h*s,y+w*s+h*c);ctx.lineTo(x-w*c-h*s,y-w*s+h*c);ctx.closePath();
   }
-  ctx.fill();if(outline){ctx.strokeStyle="rgba(10,16,22,.5)";ctx.stroke();}
+  ctx.fill();ctx.shadowColor="transparent";ctx.shadowBlur=ctx.shadowOffsetX=ctx.shadowOffsetY=0;
+  if(outline){ctx.strokeStyle="rgba(70,60,40,.55)";ctx.stroke();}
 }
 // place names: cities large, towns and villages plain, compounds smaller; minor names wait for zoom or room
-function arenaLabels(sx,sy,label){
-  const rank={city:0,town:1,site:2,village:3},list=W0.cities.slice().sort((a,b)=>rank[a.cls]-rank[b.cls]);
+// white names with a soft shadow, centred on the place, as on aerial game maps; no markers
+function arenaLabels(sx,sy){
+  const rank={city:0,town:1,site:2,village:3},list=W0.cities.slice().sort((a,b)=>rank[a.cls]-rank[b.cls]),boxes=[];
+  const zs=Math.min(1.25,0.85+0.15*Math.log2(view.zoom+1));
+  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
   for(const c of list){
-    const x=sx(c.x),y=sy(c.y);if(x<-60||x>cssW+60||y<-20||y>cssH+20)continue;
-    const font=c.cls==="city"?"700 15px":c.cls==="town"?"600 13px":c.cls==="site"?"500 11px":"500 12px";
-    ctx.font=font+" Inter, sans-serif";const w=ctx.measureText(c.name).width; // label() starts text 8 px right of x
-    label(c.name,x-w/2-8,y,font+" Inter, sans-serif",c.cls==="city"?"#f1c877":c.cls==="site"?"#cfd8e3":"#e9e3d3");
+    const x=sx(c.x),y=sy(c.y);if(x<-80||x>cssW+80||y<-20||y>cssH+20)continue;
+    const size=(c.cls==="city"?19:c.cls==="town"?14:c.cls==="site"?11.5:12.5)*zs;
+    ctx.font=(c.cls==="city"?"600 ":c.cls==="town"?"600 ":"500 ")+size.toFixed(1)+"px Inter, sans-serif";
+    const w=ctx.measureText(c.name).width,b=[x-w/2-3,y-size*0.6,w+6,size*1.2];
+    if(boxes.some(o=>b[0]<o[0]+o[2]&&b[0]+b[2]>o[0]&&b[1]<o[1]+o[3]&&b[1]+b[3]>o[1]))continue;
+    boxes.push(b);
+    // a soft dark halo first, so names read on snow and sand as well as on forest
+    ctx.shadowColor="rgba(0,0,0,.9)";ctx.shadowBlur=7;ctx.lineJoin="round";ctx.lineWidth=size*0.28;ctx.strokeStyle="rgba(20,22,24,.42)";ctx.strokeText(c.name,x,y);
+    ctx.shadowBlur=3;ctx.shadowOffsetY=1;
+    ctx.fillStyle=c.cls==="site"?"rgba(236,238,240,.92)":"rgba(248,248,246,.98)";ctx.fillText(c.name,x,y);
+    ctx.shadowBlur=0;ctx.shadowOffsetY=0;
   }
+  ctx.restore();
+}
+
+/* ---- battle maps: aerial-photo colouring ---- */
+// Muted ground colours per climate, mixed by moisture, slope and height, with texture laid in world space (so it
+// holds still while panning): patches of ~150 m, clumps of ~35 m, tree crowns of ~12 m and a fine grain of ~4 m.
+// Farmland appears as parcels on low, gentle ground where a slow noise allows it.
+const AERIAL={
+  temperate:{open:[96,104,66],dry:[134,128,90],forest:[44,58,36],rock:[116,108,94],beach:[180,166,132],field:[[118,126,70],[150,140,86],[112,96,68],[96,112,62]],farm:0.55},
+  snow:{open:[222,226,231],dry:[200,205,211],forest:[62,74,68],rock:[100,100,103],beach:[160,158,152],field:[[214,218,222],[198,202,206]],farm:0.25},
+  desert:{open:[150,118,84],dry:[182,150,106],forest:[106,98,64],rock:[106,80,60],beach:[196,174,134],field:[[132,118,72],[170,140,96],[120,104,70]],farm:0.35},
+  jungle:{open:[82,106,54],dry:[126,116,74],forest:[36,62,32],rock:[108,98,82],beach:[182,168,130],field:[[110,126,60],[136,130,78],[92,116,52]],farm:0.45}
+};
+const mixc=(c,t)=>{col[0]+=(c[0]-col[0])*t;col[1]+=(c[1]-col[1])*t;col[2]+=(c[2]-col[2])*t;};
+const hash2=(a,b)=>{let h=Math.imul(a,374761393)^Math.imul(b,668265263);h=Math.imul(h^h>>>13,1274126177);return ((h^h>>>16)>>>0)/4294967296;};
+function aerial(wx,wy,h,R,sl,top){
+  const th=AERIAL[P.theme]||AERIAL.temperate,mx=wx*MPU,my=wy*MPU; // metres
+  if(h<0){ // turquoise over the shallows, slate blue in deep water
+    const dd=-h,t1=smooth(0,9,dd),t2=smooth(9,50,dd),w=0.04*N.t(mx/90,my/90);
+    col[0]=72;col[1]=164;col[2]=160;mixc([30,98,118],t1);mixc([14,40,64],t2);
+    col[0]*=1+w;col[1]*=1+w;col[2]*=1+w;return;
+  }
+  const lo=THEMES[P.theme].R[0],hi=THEMES[P.theme].R[1],m=(R-lo)/(hi-lo);
+  const p1=N.t(mx/160+31,my/160),p2=N.t(mx/38-17,my/38+5),p3=N.t(mx/12+3,my/12-9);
+  // open ground, drier where the clumps say so, then forest where it is wet enough
+  col[0]=th.open[0];col[1]=th.open[1];col[2]=th.open[2];
+  mixc(th.dry,Math.max(0,Math.min(1,0.45+0.7*p2-0.5*m+0.3*p1)));
+  let fo=smooth(0.42,0.66,m+0.28*p1+0.12*p2);
+  if(P.theme==="desert")fo*=0.45;else if(P.theme==="snow")fo*=smooth(0.55,0.8,m+0.2*p1);
+  // farmland: parcels of 70–160 m with thin darker margins, never on slopes or high ground
+  const fm=smooth(th.farm,th.farm+0.18,N.c(mx/1400+4.1,my/1400))*smooth(0.12,0.05,sl)*smooth(top*0.45,top*0.2,h);
+  if(fm>0.02){
+    const ux=mx/150+0.6*N.k(mx/900,my/900),uy=my/75,ix=Math.floor(ux),iy=Math.floor(uy),fx=ux-ix,fy=uy-iy;
+    const pick=hash2(ix,iy),fc=th.field[Math.floor(pick*th.field.length)],edge=Math.min(fx,1-fx)*150<3||Math.min(fy,1-fy)*75<3;
+    mixc(fc,fm*(edge?0.55:0.92));if(edge)mixc([60,62,44],fm*0.25);fo*=1-fm;
+  }
+  if(fo>0){const crown=0.82+0.3*(p3*0.5+0.5);mixc([th.forest[0]*crown,th.forest[1]*crown,th.forest[2]*crown],fo);}
+  // bare rock on steep slopes and the highest ground; sand on the beach
+  const rk=P.theme==="snow"?0.5:1; // snow clings to all but the steepest ground
+  mixc(th.rock,rk*Math.min(0.8,0.85*smooth(0.45,1.0,sl+0.12*p2)+0.4*smooth(top*0.75,top,h)));
+  mixc(th.beach,smooth(9,5,h));
+  const g=1+0.06*p3+0.07*(hash2(Math.floor(mx/4),Math.floor(my/4))-0.5); // grain
+  col[0]*=g;col[1]*=g;col[2]*=g;
 }

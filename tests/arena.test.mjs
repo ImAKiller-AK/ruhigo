@@ -1,15 +1,10 @@
 // Battle maps (P.kind "arena"): a square map a few kilometres across with named places, buildings, roads and
-// bridges. Checks every layout and climate, the smaller sizes, that the output is fixed for a seed, and that the
-// Minecraft export still produces a world the independent checker accepts.
+// bridges. Checks every layout and climate, the smaller sizes, and that the output is fixed for a seed.
+// Battle maps are for design only: they have no Minecraft export.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { buildArena } from "./helpers/engine.mjs";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const LAND = { island: [0.5, 0.8], coast: [0.5, 0.85], inland: [0.8, 1] }; // share of the square that is land
 
 const CASES = [
@@ -62,19 +57,4 @@ test("battle map is fixed for a given seed", () => {
   assert.deepEqual(a.cities.map((c) => c.name + c.kind), b.cities.map((c) => c.name + c.kind));
   assert.deepEqual(Array.from(a.bld.slice(0, 50)), Array.from(b.bld.slice(0, 50)));
   assert.equal(a.net.km, b.net.km);
-});
-
-test("Minecraft export of a battle map", async (t) => {
-  const { E } = buildArena("ember-4", {});
-  const res = await E.MCX.build({ W: 256, H: 256, x0: 0, y0: 0, span: 1, name: "Arena · Worldsmith", progress: () => {}, cancelled: () => false });
-  assert.equal(res.chunks, 256);
-  assert.ok(res.towns.length > 5, `${res.towns.length} places built`);
-  const out = path.join(root, "tests/out");
-  fs.mkdirSync(out, { recursive: true });
-  const file = path.join(out, "battle-map.zip");
-  fs.writeFileSync(file, Buffer.from(await res.blob.arrayBuffer()));
-  const py = spawnSync("python3", ["--version"]);
-  if (py.error || py.status !== 0) { t.skip("python3 not installed: structure not checked"); return; }
-  const v = spawnSync("python3", ["-I", path.join(root, "tools/verify_mcworld.py"), file, "--quiet"], { encoding: "utf8" });
-  assert.equal(v.status, 0, "verify_mcworld.py failed:\n" + v.stdout + v.stderr);
 });

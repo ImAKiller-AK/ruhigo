@@ -11,7 +11,7 @@ function setTab(t){
   if(isArena())t="gen"; // a battle map has no history to simulate
   ui.tab=t;
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t?"true":"false"));
-  document.querySelectorAll("[data-pane]").forEach(e=>{e.hidden=e.dataset.pane!==t;});
+  showPanes();
   try{localStorage.setItem("worldsmith-tab",t);}catch(e){}
   if(t==="sim"){if(W0&&!SIM)startSim();}
   else{
@@ -379,10 +379,11 @@ function drawArenaRoads(sx,sy){
   if(view.zoom>=2.2){ // town streets, once there is room for them
     const st=W0.streets,lw=Math.min(9,0.9*zf);ctx.beginPath();
     for(let q=0;q<st.length;q+=4){ctx.moveTo(sx(st[q]),sy(st[q+1]));ctx.lineTo(sx(st[q+2]),sy(st[q+3]));}
-    ctx.strokeStyle="rgba(10,16,22,.5)";ctx.lineWidth=lw+1.4;ctx.stroke();ctx.strokeStyle="#c9c2ae";ctx.lineWidth=lw;ctx.stroke();
+    ctx.strokeStyle="rgba(40,36,28,.3)";ctx.lineWidth=lw+1;ctx.stroke();ctx.strokeStyle="rgba(190,184,168,.7)";ctx.lineWidth=lw*0.85;ctx.stroke();
   }
-  ctx.strokeStyle="rgba(10,16,22,.6)";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*zf)+1.6;trace(net.land[b]);}
-  ctx.lineWidth=Math.min(14,2.6*zf)+2.4;trace(net.sea);
-  ctx.strokeStyle="#d9d2bf";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*zf);trace(net.land[b]);}
-  ctx.strokeStyle="#a9b0b8";ctx.lineWidth=Math.min(14,2.6*zf);trace(net.sea);
+  // pale tarmac with only a faint shadow, as roads look from the air; bridges are grey decks with a dark edge
+  ctx.strokeStyle="rgba(30,28,22,.28)";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*1.15*zf)+1.2;trace(net.land[b]);}
+  ctx.strokeStyle="rgba(20,24,28,.7)";ctx.lineWidth=Math.min(14,2.4*zf)+2.2;trace(net.sea);
+  ctx.strokeStyle="rgba(226,222,210,.93)";for(let b=0;b<4;b++){ctx.lineWidth=Math.min(12,ws[b]*1.15*zf);trace(net.land[b]);}
+  ctx.strokeStyle="#9aa1a8";ctx.lineWidth=Math.min(14,2.4*zf);trace(net.sea);
 }
