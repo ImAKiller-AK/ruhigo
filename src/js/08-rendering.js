@@ -125,6 +125,7 @@ function drawOverlay(){
   ctx.lineCap="round";ctx.lineJoin="round";
   // world frame
   ctx.strokeStyle="rgba(233,227,211,.25)";ctx.lineWidth=1;ctx.strokeRect(sx(0),sy(0),WX/u,1/u);
+  if(isArena())drawArenaBorder(sx,sy,u);
   if(opt.grid&&isArena())drawArenaGrid(sx,sy,u);
   else if(opt.grid){
     const z=view.zoom,step=z<2.5?30:z<7?10:z<20?5:z<80?1:z<400?0.25:0.05;
@@ -216,12 +217,19 @@ function drawArenaGrid(sx,sy,u){
   for(let j=0;j<n;j++){const Y=sy((j+0.5)*km);if(Y>70&&Y<cssH-40)ctx.fillText(String(j+1),left,Y+4);}
 }
 // buildings: pale footprints, drawn as soon as they are a pixel or more across
+// roofs: mostly cream, then grey, terracotta, slate blue and white, fixed per building; from afar all read cream
+const ROOFS=[["#eee3bf",0.55],["#c9c7c0",0.75],["#b8735e",0.87],["#8f9cab",0.95],["#f4f3ee",1]];
 function drawBuildings(sx,sy,u){
   const b=W0.bld,px=12/(u*MPU);if(px<0.6)return;
-  ctx.fillStyle=px<2?"rgba(246,236,196,.95)":"#eee3bf";ctx.strokeStyle="rgba(10,16,22,.75)";ctx.lineWidth=1;
-  if(px>=3){ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=Math.min(6,px*0.25);ctx.shadowOffsetX=ctx.shadowOffsetY=Math.min(4,px*0.15);}
-  const outline=px>=3;ctx.beginPath();
+  if(px<2){drawRoofs(sx,sy,u,b,-1,"rgba(246,236,196,.95)",false);return;}
+  for(let g=0;g<ROOFS.length;g++)drawRoofs(sx,sy,u,b,g,ROOFS[g][0],px>=3);
+}
+function drawRoofs(sx,sy,u,b,group,fill,outline){
+  ctx.fillStyle=fill;ctx.lineWidth=1;const px=12/(u*MPU);
+  if(outline){ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=Math.min(6,px*0.25);ctx.shadowOffsetX=ctx.shadowOffsetY=Math.min(4,px*0.15);}
+  ctx.beginPath();
   for(let q=0;q<b.length;q+=5){
+    if(group>=0){const h=hash2(q,77),g=ROOFS.findIndex(r=>h<r[1]);if(g!==group)continue;}
     const x=sx(b[q]),y=sy(b[q+1]);if(x<-40||x>cssW+40||y<-40||y>cssH+40)continue;
     const w=Math.max(1,b[q+2]/u),h=Math.max(1,b[q+3]/u),a=b[q+4],c=Math.cos(a)/2,s=Math.sin(a)/2;
     ctx.moveTo(x-w*c+h*s,y-w*s-h*c);ctx.lineTo(x+w*c+h*s,y+w*s-h*c);ctx.lineTo(x+w*c-h*s,y+w*s+h*c);ctx.lineTo(x-w*c-h*s,y-w*s+h*c);ctx.closePath();
@@ -268,6 +276,7 @@ function aerial(wx,wy,h,R,sl,top){
   if(h<0){ // turquoise over the shallows, slate blue in deep water
     const dd=-h,t1=smooth(0,9,dd),t2=smooth(9,50,dd),w=0.04*N.t(mx/90,my/90);
     col[0]=72;col[1]=164;col[2]=160;mixc([30,98,118],t1);mixc([14,40,64],t2);
+    const rocky=smooth(0.02,0.28,N.c(mx/1100+2.7,my/1100-6.3));if(rocky>0)mixc([34,92,106],rocky*0.55*(1-t2)); // no turquoise off rocks
     col[0]*=1+w;col[1]*=1+w;col[2]*=1+w;return;
   }
   const lo=THEMES[P.theme].R[0],hi=THEMES[P.theme].R[1],m=(R-lo)/(hi-lo);
@@ -281,8 +290,12 @@ function aerial(wx,wy,h,R,sl,top){
   let dens=smooth(0.3,0.85,m+0.28*p1+0.12*p2-0.35*smooth(top*0.3,top*0.75,h));
   if(P.theme==="desert")dens*=0.5;else if(P.theme==="snow")dens*=smooth(0.4,0.85,m+0.2*p1);
   const p4=N.e(mx/6.5+7,my/6.5-3);
+  let cl=0; // towns and compounds stand in cleared, trodden ground: fewer trees, each still crisp
+  if(W0&&W0.kind==="arena")for(const c of W0.cities){const dx=mx-c.x*MPU,dy=my-c.y*MPU,R=c.r*1.2+40;if(dx*dx+dy*dy<R*R)cl=Math.max(cl,smooth(R,c.r*0.75,Math.sqrt(dx*dx+dy*dy)+30*p2));}
+  if(cl>0){dens*=1-cl*0.9;mixc(th.dry,cl*0.3);}
   let fo=dens>0.02?smooth(-0.12,0.16,dens*1.25-0.62+0.42*p3+0.28*p4+0.12*p2):0;
-  fo=Math.max(fo,smooth(0.62,0.8,p4*0.75+p3*0.35)*(P.theme==="desert"?0.35:0.75)); // lone trees dotted over open ground
+  fo=Math.max(fo,smooth(0.62,0.8,p4*0.75+p3*0.35)*(P.theme==="desert"?0.35:0.75)*(1-cl*0.6)); // lone trees dotted over open ground
+
   // farmland: parcels of 70–160 m with thin darker margins, never on slopes or high ground
   const fm=smooth(th.farm,th.farm+0.05,N.c(mx/1400+4.1,my/1400))*smooth(0.12,0.05,sl)*smooth(top*0.45,top*0.2,h);
   if(fm>0.02){
@@ -297,7 +310,10 @@ function aerial(wx,wy,h,R,sl,top){
   // bare rock on steep slopes and the highest ground; sand on the beach
   const rk=P.theme==="snow"?0.5:1; // snow clings to all but the steepest ground
   mixc(th.rock,rk*Math.min(0.8,0.85*smooth(0.45,1.0,sl+0.12*p2)+0.4*smooth(top*0.75,top,h)));
-  mixc(th.beach,smooth(9,5,h));
+  // the shore alternates: sand in the bays, dark rock and boulders along rocky stretches
+  const rocky=smooth(0.02,0.28,N.c(mx/1100+2.7,my/1100-6.3));
+  mixc(th.beach,smooth(9,5,h)*(1-rocky));
+  if(rocky>0){const sh=smooth(16,5,h)*rocky;mixc([th.rock[0]*0.72,th.rock[1]*0.72,th.rock[2]*0.74],sh*(0.75+0.25*p3));}
   const g=1+0.06*p3+0.07*(hash2(Math.floor(mx/4),Math.floor(my/4))-0.5); // grain
   col[0]*=g;col[1]*=g;col[2]*=g;
 }
@@ -354,4 +370,24 @@ function drawDecor(sx,sy,u,layer){
       }
     }
   }
+}
+
+// the edge of the playable area: a wavering reddish line a little inside the map edge, the ground beyond it
+// dimmed, and diagonal hatching outside the map, as battle maps mark their bounds
+function drawArenaBorder(sx,sy,u){
+  const x0=sx(0),y0=sy(0),x1=sx(WX),y1=sy(1),pts=[],n=120;
+  for(let i=0;i<4*n;i++){
+    const t=(i%n)/n,side=Math.floor(i/n),edge=[[t,0],[1,t],[1-t,1],[0,1-t]][side],nrm=[[0,1],[-1,0],[0,-1],[1,0]][side];
+    const inset=(40+45*(N.c(i*0.09+3.3,side*7.1)*0.5+0.5))/MPU;
+    pts.push([edge[0]*WX+nrm[0]*inset,edge[1]+nrm[1]*inset]);
+  }
+  ctx.save();
+  ctx.beginPath();ctx.rect(x0,y0,x1-x0,y1-y0);ctx.moveTo(sx(pts[0][0]),sy(pts[0][1]));for(const p of pts)ctx.lineTo(sx(p[0]),sy(p[1]));ctx.closePath();
+  ctx.fillStyle="rgba(8,10,12,.38)";ctx.fill("evenodd");
+  ctx.beginPath();ctx.rect(0,0,cssW,cssH);ctx.rect(x0,y0,x1-x0,y1-y0);ctx.clip("evenodd");
+  ctx.strokeStyle="rgba(233,227,211,.05)";ctx.lineWidth=5;ctx.beginPath();
+  for(let k=-cssH;k<cssW;k+=14){ctx.moveTo(k,0);ctx.lineTo(k+cssH,cssH);}ctx.stroke();
+  ctx.restore();
+  ctx.beginPath();ctx.moveTo(sx(pts[0][0]),sy(pts[0][1]));for(const p of pts)ctx.lineTo(sx(p[0]),sy(p[1]));ctx.closePath();
+  ctx.strokeStyle="rgba(10,12,14,.5)";ctx.lineWidth=4.5;ctx.stroke();ctx.strokeStyle="rgba(168,104,92,.95)";ctx.lineWidth=2.4;ctx.stroke();
 }

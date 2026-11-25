@@ -186,7 +186,7 @@ function arenaPlaces(f){
   const ok=(x,y)=>{if(x<0||y<0||x>=WX||y>=1)return false;const k=Math.floor(y*GH)*GW+Math.floor(x/cw);return hm[k]>=2&&!isR[k]&&slope(k)<0.2;};
   for(const c of picks){
     const r=mulberry32(hs^Math.imul(c.k+1,0x9E3779B1)),ang=r()*Math.PI/2,ca=Math.cos(ang),sa=Math.sin(ang),b0=out.length;
-    const add=(u,v,w,h)=>{const x=c.x+(u*ca-v*sa)*M,y=c.y+(u*sa+v*ca)*M;if(ok(x,y))out.push(x,y,w*M,h*M,ang);};
+    const add=(u,v,w,h,turn)=>{const x=c.x+(u*ca-v*sa)*M,y=c.y+(u*sa+v*ca)*M;if(ok(x,y))out.push(x,y,w*M,h*M,ang+(turn||0));};
     if(c.cls==="site"){
       const d0=deco.length;
       siteLayout(c,{add,r,ang,M,ok,deco,hm,cw,waterDir:()=>waterDir(c,hm,cw)});
@@ -197,18 +197,34 @@ function arenaPlaces(f){
       }
       c.deco=[d0,deco.length];
     }else{
-      const L=c.cls==="city"?30:c.cls==="town"?33:42,dens=c.cls==="village"?0.5:0.86,big=c.cls==="city"?1.35:1;
-      const offs=c.cls==="city"?[0,-3.5*L,3.5*L]:c.cls==="town"?[0,2.5*L]:[0]; // street lines, the same both ways
-      for(const o of offs){
-        const ext=Math.sqrt(Math.max(0,c.r*c.r-o*o))*(c.cls==="village"?0.7:0.9);
-        street(c.x+(o*-sa-ext*ca)*M,c.y+(o*ca-ext*sa)*M,c.x+(o*-sa+ext*ca)*M,c.y+(o*ca+ext*sa)*M);
-        street(c.x+(o*ca+ext*sa)*M,c.y+(o*sa-ext*ca)*M,c.x+(o*ca-ext*sa)*M,c.y+(o*sa+ext*ca)*M);
+      // organic growth: a winding main street (two crossing ones in a city), side streets branching off it,
+      // and houses lining both sides of every street, facing it, thinning out towards the edge of town
+      const R=c.r,dens=c.cls==="village"?0.62:0.9,big=c.cls==="city"?1.3:1,gap=c.cls==="city"?22:c.cls==="town"?25:32;
+      const lines=[],grow=(u,v,th,len,bend)=>{
+        const p=[[u,v]];for(let s=0;s<len;s+=15){th+=bend*(r()-0.5);u+=Math.cos(th)*15;v+=Math.sin(th)*15;if(Math.hypot(u,v)>R*1.05)break;p.push([u,v]);}
+        if(p.length>2)lines.push(p);return p;
+      };
+      const main=grow(-R*0.95,(r()-0.5)*R*0.3,(r()-0.5)*0.3,R*1.9,0.16);
+      if(c.cls==="city")grow((r()-0.5)*R*0.3,-R*0.95,Math.PI/2+(r()-0.5)*0.3,R*1.9,0.16);
+      const nb=c.cls==="city"?9:c.cls==="town"?5:2;
+      for(let b=0;b<nb;b++){
+        const par=lines[Math.floor(r()*lines.length)],q=1+Math.floor(r()*(par.length-2)),[u,v]=par[q],[u0,v0]=par[q-1];
+        grow(u,v,Math.atan2(v-v0,u-u0)+(r()<0.5?1:-1)*(Math.PI/2+(r()-0.5)*0.7),R*(0.35+r()*0.45),0.22);
       }
-      for(let gu=-c.r;gu<=c.r;gu+=L)for(let gv=-c.r;gv<=c.r;gv+=L){
-        if(offs.some(o=>Math.abs(gu-o)<L*0.6||Math.abs(gv-o)<L*0.6))continue; // keep the streets clear
-        const d=Math.hypot(gu,gv)/c.r;if(d>1||r()>dens*(1-d*d*0.85))continue;
-        add(gu+(r()-0.5)*6,gv+(r()-0.5)*6,(10+r()*12)*big,(8+r()*9)*big);
+      const W2=(u,v)=>[c.x+(u*ca-v*sa)*M,c.y+(u*sa+v*ca)*M],placed=[];
+      for(const p of lines){
+        for(let q=1;q<p.length;q++){const a=W2(...p[q-1]),b=W2(...p[q]);street(a[0],a[1],b[0],b[1]);}
+        for(let q=1;q<p.length;q++){
+          const [u0,v0]=p[q-1],[u1,v1]=p[q],th=Math.atan2(v1-v0,u1-u0),nx=-Math.sin(th),ny=Math.cos(th),L=Math.hypot(u1-u0,v1-v0);
+          for(let t=r()*gap;t<L;t+=gap*(0.8+r()*0.5))for(const side of [-1,1]){
+            const w=(10+r()*12)*big,h=(8+r()*8)*big,off=side*(9+h/2+r()*4),u=u0+(u1-u0)*t/L+nx*off,v=v0+(v1-v0)*t/L+ny*off;
+            const d=Math.hypot(u,v)/R;if(d>1||r()>dens*(1-d*d*0.8))continue;
+            if(placed.some(([pu,pv])=>(pu-u)**2+(pv-v)**2<(w*0.75)**2))continue;
+            placed.push([u,v]);add(u,v,w,h,th);
+          }
+        }
       }
+      if(main.length<3)add(0,0,14,10); // a hamlet squeezed by water keeps at least one house
     }
     c.bld=[b0/5,out.length/5];c.pop=(out.length-b0)/5;
   }

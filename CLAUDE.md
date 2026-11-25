@@ -91,7 +91,11 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   over open country and joined to the roads by dirt tracks, a ring road a few hundred metres in from the
   shore or map edge, and compounds drawn with their own silhouettes (runway and hangars, stadium bowl,
   cooling towers, quarry terraces, piers, prison walls, tank farms, rail sidings…); every map of 6 km or
-  more has a military base in its most remote compound; harbours only beside the sea or a big lake. No faction simulation and no Minecraft export on battle maps: the owner wants them as
+  more has a military base in its most remote compound; harbours only beside the sea or a big lake.
+  Towns grow organically: a winding main street (two in a city), side streets branching off, houses lining
+  them and facing them, cleared ground around; roofs mostly cream with grey, terracotta, slate and white.
+  Rivers about 130–180 m wide; shores alternate sandy bays and dark rocky stretches; a wavering reddish
+  play-zone line just inside the map edge with hatching outside. No faction simulation and no Minecraft export on battle maps: the owner wants them as
   pure design, as close as possible to the look of battle-royale maps.
 - Battle-map look ("Aerial" layer): an aerial-photo style, not flat biome colours. Muted ground per climate,
   woods built from single crowns (clumps, glades, frayed edges and lone trees, never flat patches), farmland parcels, bare rock on steep slopes, turquoise shallows and slate deep water, texture laid
@@ -120,9 +124,7 @@ Always edit `src/`, then `npm run build` and `npm test`. Never edit `dist/` by h
   without war, no faction above 36%. The default seed (`ember-4`) has 11 wars and 5 pacts.
 - The Minecraft export has been checked with `tools/verify_mcworld.py` but never opened inside Minecraft.
 - The page has been tested in desktop and phone-sized Chrome, not on a real phone.
-- Battle maps have been compared by eye with reference maps on desktop and phone-sized Chrome. Ideas not
-  yet done: towns that grow organically along roads, varied coasts (cliffs and rocks), narrower rivers,
-  a drawn play-zone border, coloured roofs.
+- Battle maps have been compared by eye with reference maps on desktop and phone-sized Chrome.
 
 ## Publishing
 
